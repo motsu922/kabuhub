@@ -1,0 +1,138 @@
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
+import { Stock, WatchlistItem, AlertSettings, WatchStyle, UserIntention } from '../types';
+import { StorageService } from '../services/storage';
+import { StockDataService } from '../services/stockData';
+import { NotificationService } from '../services/notificationService';
+import { detectSignals } from '../services/technicalAnalysis';
+import { MOCK_STOCKS } from '../constants/mockData';
+
+const REFRESH_INTERVAL_MS = 60_000;
+
+function buildBaseStock(code: string): Stock {
+  const mock = MOCK_STOCKS.find((s) => s.code === code);
+  if (mock) return mock;
+  // モックにない銘柄のデフォルト値
+  return {
+    id: code, code, name: code, market: 'JP',
+    price: 0, previousClose: 0, change: 0, changePercent: 0,
+    volume: 0, status: 'normal', updatedAt: new Date(),
+    priceHistory: [],
+  };
+}
+
+export function useWatchlist() {
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [items,  setItems]  = useState<WatchlistItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const itemsRef = useRef<WatchlistItem[]>([]);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const watchlistItems = await StorageService.getWatchlist();
+      setItems(watchlistItems);
+      itemsRef.current = watchlistItems;
+      const codes = watchlistItems.map((i) => i.stockCode);
+      if (!codes.length) { setStocks([]); return; }
+
+      // ベース情報（名前・テーマ等）。非モック銘柄は社名を API で解決
+      const baseStocks = await Promise.all(codes.map(async (code) => {
+        const base = buildBaseStock(code);
+        if (base.name === base.code) {
+          const resolved = await StockDataService.resolveNameByCode(code).catch(() => null);
+          if (resolved) return { ...base, name: resolved };
+        }
+        return base;
+      }));
+
+      // Yahoo Finance 一括取得（1リクエストで全銘柄）
+      const quoteMap = await StockDataService.fetchQuotes(codes);
+
+      // ミニチャート用履歴 + テクニカル分析用OHLCを並列取得
+      const [historyArr, ohlcArr] = await Promise.all([
+        Promise.all(codes.map((c) => StockDataService.fetchPriceHistory(c))),
+        Promise.all(codes.map((c) => StockDataService.fetchOHLC(c, '1d'))),
+      ]);
+
+      const enriched = baseStocks.map((s, i) => {
+        const quote   = quoteMap.get(s.code);
+        const history = historyArr[i];
+        const ohlc    = ohlcArr[i];
+        const technicalSignals = ohlc.length >= 30 ? detectSignals(ohlc) : [];
+        return {
+          ...s,
+          ...(quote ?? {}),
+          priceHistory: history.length ? history : s.priceHistory,
+          technicalSignals,
+        };
+      });
+
+      setStocks(enriched);
+      setLastUpdatedAt(new Date());
+
+      // アラート判定 → ローカル通知
+      NotificationService.checkAndNotify(enriched, itemsRef.current).catch(() => {});
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // 初回ロード
+  useEffect(() => { load(); }, [load]);
+
+  // 60秒ごとにフォアグラウンドで自動更新
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (AppState.currentState === 'active') load();
+    }, REFRESH_INTERVAL_MS);
+
+    // バックグラウンドから復帰したとき即時更新
+    const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') load();
+    });
+
+    return () => {
+      clearInterval(timer);
+      sub.remove();
+    };
+  }, [load]);
+
+  const addStock = useCallback(async (code: string) => {
+    await StorageService.addToWatchlist(code);
+    await load();
+  }, [load]);
+
+  const removeStock = useCallback(async (code: string) => {
+    await StorageService.removeFromWatchlist(code);
+    await load();
+  }, [load]);
+
+  const isInWatchlist = useCallback(
+    (code: string) => items.some((i) => i.stockCode === code),
+    [items]
+  );
+
+  const getItem = useCallback(
+    (code: string) => items.find((i) => i.stockCode === code),
+    [items]
+  );
+
+  const updateAlertSettings = useCallback(async (code: string, settings: AlertSettings) => {
+    await StorageService.updateAlertSettings(code, settings);
+    await load();
+  }, [load]);
+
+  const updateWatchStyle = useCallback(async (code: string, style: WatchStyle) => {
+    await StorageService.updateWatchStyle(code, style);
+    await load();
+  }, [load]);
+
+  const updateIntention = useCallback(async (code: string, intention: UserIntention) => {
+    await StorageService.updateIntention(code, intention);
+    await load();
+  }, [load]);
+
+  return { stocks, items, isLoading, lastUpdatedAt, addStock, removeStock, isInWatchlist, getItem, updateAlertSettings, updateWatchStyle, updateIntention, refresh: load };
+}
