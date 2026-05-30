@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { StockCandidate } from '../../types';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
+import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface Props {
   candidate: StockCandidate;
@@ -10,6 +11,9 @@ interface Props {
 }
 
 export function StockCandidateCard({ candidate, isAdded, onAdd }: Props) {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+
   const pct = candidate.changePercent;
   const isUp = (pct ?? 0) >= 0;
   const sign = isUp ? '+' : '';
@@ -28,7 +32,7 @@ export function StockCandidateCard({ candidate, isAdded, onAdd }: Props) {
           <Text style={styles.price}>
             {candidate.price.toLocaleString('ja-JP')}円
             {pct != null && (
-              <Text style={[styles.pct, { color: isUp ? Colors.positive : Colors.negative }]}>
+              <Text style={[styles.pct, { color: isUp ? colors.positive : colors.negative }]}>
                 {'  '}{sign}{pct.toFixed(2)}%
               </Text>
             )}
@@ -49,72 +53,60 @@ export function StockCandidateCard({ candidate, isAdded, onAdd }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    padding: Spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  left: { flex: 1, gap: 3 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  name: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.text,
-    flex: 1,
-  },
-  code: {
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    backgroundColor: Colors.surface,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-  },
-  codeUnknown: {
-    color: Colors.textTertiary,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  context: {
-    fontSize: FontSize.xs,
-    color: Colors.textTertiary,
-  },
-  price: {
-    fontSize: FontSize.sm,
-    color: Colors.text,
-    fontWeight: '600',
-    fontVariant: ['tabular-nums'],
-  },
-  pct: {
-    fontSize: FontSize.xs,
-    fontWeight: '500',
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    minWidth: 72,
-    alignItems: 'center',
-  },
-  buttonAdded: {
-    backgroundColor: Colors.surface,
-  },
-  buttonText: {
-    fontSize: FontSize.sm,
-    fontWeight: '700',
-    color: '#000',
-  },
-  buttonTextAdded: {
-    color: Colors.textSecondary,
-  },
-});
+function createStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: c.card,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      padding: Spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    left: { flex: 1, gap: 3 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    name: {
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      color: c.text,
+      flex: 1,
+    },
+    code: {
+      fontSize: FontSize.xs,
+      fontWeight: '700',
+      color: c.textSecondary,
+      backgroundColor: c.surface,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: BorderRadius.sm,
+    },
+    codeUnknown: {
+      color: c.textTertiary,
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+    },
+    context: { fontSize: FontSize.xs, color: c.textTertiary },
+    price: {
+      fontSize: FontSize.sm,
+      color: c.text,
+      fontWeight: '600',
+      fontVariant: ['tabular-nums'],
+    },
+    pct: { fontSize: FontSize.xs, fontWeight: '500' },
+    button: {
+      backgroundColor: c.primary,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderRadius: BorderRadius.full,
+      minWidth: 72,
+      alignItems: 'center',
+    },
+    buttonAdded: { backgroundColor: c.surface },
+    buttonText: { fontSize: FontSize.sm, fontWeight: '700', color: '#000' },
+    buttonTextAdded: { color: c.textSecondary },
+  });
+}

@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { View, Text, Image, StyleSheet } from 'react-native';
-import { Colors, FontSize } from '../../src/constants/theme';
+import { FontSize } from '../../src/constants/theme';
+import { useTheme } from '../../src/contexts/ThemeContext';
 
 const TAB_ICONS = {
   index:     require('../../assets/icons/tab-home.png'),
@@ -12,35 +13,37 @@ const TAB_ICONS = {
 type TabName = keyof typeof TAB_ICONS;
 
 function TabIcon({ name, label, focused }: { name: TabName; label: string; focused: boolean }) {
+  const { colors } = useTheme();
   return (
     <View style={styles.tabItem}>
-      <View style={[styles.pill, focused && styles.pillActive]}>
+      <View style={[styles.pill, focused && { backgroundColor: colors.primaryMuted }]}>
         <Image
           source={TAB_ICONS[name]}
-          style={[styles.icon, { tintColor: focused ? Colors.primary : Colors.textTertiary }]}
+          style={[styles.icon, { tintColor: focused ? colors.primary : colors.textTertiary }]}
         />
       </View>
-      <Text style={[styles.label, focused && styles.labelActive]}>{label}</Text>
+      <Text style={[styles.label, { color: focused ? colors.primary : colors.textTertiary }]}>{label}</Text>
     </View>
   );
 }
 
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopColor: Colors.separator,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.separator,
           borderTopWidth: 0.5,
           height: 72,
           paddingBottom: 10,
           paddingTop: 6,
         },
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
       }}
     >
       <Tabs.Screen
@@ -85,9 +88,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
   },
-  pillActive: {
-    backgroundColor: Colors.primaryMuted,
-  },
   icon: {
     width: 36,
     height: 36,
@@ -96,11 +96,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 10,
     fontWeight: '600',
-    color: Colors.textTertiary,
     width: 52,
     textAlign: 'center',
-  },
-  labelActive: {
-    color: Colors.primary,
   },
 });

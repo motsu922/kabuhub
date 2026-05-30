@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../constants/theme';
+import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { FREE_AI_WEEKLY_LIMIT, FREE_WATCHLIST_LIMIT } from '../../services/subscriptionService';
 
 export type PaywallReason = 'watchlist' | 'ai' | 'alert';
@@ -34,6 +35,8 @@ interface Props {
 }
 
 export function PaywallModal({ visible, onClose, reason }: Props) {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const { title, body } = REASON_CONFIG[reason];
 
   const handleUpgrade = () => {
@@ -79,106 +82,63 @@ export function PaywallModal({ visible, onClose, reason }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Colors.overlay,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: Colors.card,
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    padding: Spacing.xl,
-    paddingBottom: Spacing.xxl,
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  crown: {
-    fontSize: 36,
-    color: Colors.primary,
-    lineHeight: 44,
-  },
-  heading: {
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  reasonCard: {
-    width: '100%',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.primaryDim,
-    gap: 6,
-  },
-  reasonTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  reasonBody: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 20,
-  },
-  features: {
-    width: '100%',
-    gap: Spacing.sm,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  featureIcon: {
-    fontSize: FontSize.md,
-    color: Colors.primary,
-    width: 20,
-    textAlign: 'center',
-  },
-  featureLabel: {
-    fontSize: FontSize.md,
-    color: Colors.text,
-    fontWeight: '500',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    marginTop: 4,
-  },
-  price: {
-    fontSize: FontSize.xxxl,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -1,
-  },
-  priceUnit: {
-    fontSize: FontSize.md,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-  },
-  upgradeBtn: {
-    width: '100%',
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.full,
-    paddingVertical: Spacing.md,
-    alignItems: 'center',
-  },
-  upgradeBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: '800',
-    color: '#06090F',
-    letterSpacing: 0.3,
-  },
-  closeText: {
-    fontSize: FontSize.sm,
-    color: Colors.textTertiary,
-    marginTop: 4,
-  },
-});
+function createStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    overlay: {
+      flex: 1,
+      backgroundColor: c.overlay,
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: c.card,
+      borderTopLeftRadius: BorderRadius.xl,
+      borderTopRightRadius: BorderRadius.xl,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      padding: Spacing.xl,
+      paddingBottom: Spacing.xxl,
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    crown: { fontSize: 36, color: c.primary, lineHeight: 44 },
+    heading: {
+      fontSize: FontSize.xxl,
+      fontWeight: '800',
+      color: c.primary,
+      letterSpacing: -0.5,
+      marginBottom: 4,
+    },
+    reasonCard: {
+      width: '100%',
+      backgroundColor: c.surface,
+      borderRadius: BorderRadius.md,
+      padding: Spacing.md,
+      borderWidth: 1,
+      borderColor: c.primaryDim,
+      gap: 6,
+    },
+    reasonTitle: { fontSize: FontSize.md, fontWeight: '700', color: c.text },
+    reasonBody: { fontSize: FontSize.sm, color: c.textSecondary, lineHeight: 20 },
+    features: { width: '100%', gap: Spacing.sm },
+    featureRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
+    featureIcon: { fontSize: FontSize.md, color: c.primary, width: 20, textAlign: 'center' },
+    featureLabel: { fontSize: FontSize.md, color: c.text, fontWeight: '500' },
+    priceRow: { flexDirection: 'row', alignItems: 'baseline', marginTop: 4 },
+    price: {
+      fontSize: FontSize.xxxl,
+      fontWeight: '800',
+      color: c.text,
+      letterSpacing: -1,
+    },
+    priceUnit: { fontSize: FontSize.md, color: c.textSecondary, fontWeight: '500' },
+    upgradeBtn: {
+      width: '100%',
+      backgroundColor: c.primary,
+      borderRadius: BorderRadius.full,
+      paddingVertical: Spacing.md,
+      alignItems: 'center',
+    },
+    upgradeBtnText: { fontSize: FontSize.md, fontWeight: '800', color: '#06090F', letterSpacing: 0.3 },
+    closeText: { fontSize: FontSize.sm, color: c.textTertiary, marginTop: 4 },
+  });
+}

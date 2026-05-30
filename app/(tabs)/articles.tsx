@@ -10,7 +10,8 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
+import { useTheme } from '../../src/contexts/ThemeContext';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
 import { fetchStockCandidates, YouTubeTranscriptError, XUrlError } from '../../src/services/stockExtraction';
 import { StockCandidateCard } from '../../src/components/discover/StockCandidateCard';
@@ -22,6 +23,9 @@ import { useShareIntent } from 'expo-share-intent';
 type InputMode = 'url' | 'text';
 
 export default function ArticlesScreen() {
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const { isInWatchlist, addStock } = useWatchlist();
   const [inputMode, setInputMode] = useState<InputMode>('url');
@@ -146,7 +150,6 @@ export default function ArticlesScreen() {
           ))}
         </View>
 
-        {/* ヒント */}
         <Text style={styles.hintText}>
           {inputMode === 'url'
             ? 'YouTube・X・ニュース記事のURLを貼り付け'
@@ -158,7 +161,7 @@ export default function ArticlesScreen() {
           <TextInput
             style={[styles.input, inputMode === 'text' && styles.inputMulti]}
             placeholder={inputMode === 'url' ? 'https://...' : 'テキストを貼り付け'}
-            placeholderTextColor={Colors.textTertiary}
+            placeholderTextColor={colors.textTertiary}
             value={input}
             onChangeText={setInput}
             keyboardType={inputMode === 'url' ? 'url' : 'default'}
@@ -207,10 +210,10 @@ export default function ArticlesScreen() {
             </View>
             {candidates.map((c) => (
               <StockCandidateCard
-                key={c.code}
+                key={c.code ?? c.name}
                 candidate={c}
-                isAdded={isInWatchlist(c.code) || addedCodes.has(c.code)}
-                onAdd={() => handleAdd(c.code)}
+                isAdded={(c.code ? isInWatchlist(c.code) : false) || (c.code ? addedCodes.has(c.code) : false)}
+                onAdd={() => c.code && handleAdd(c.code)}
               />
             ))}
           </View>
@@ -233,176 +236,141 @@ export default function ArticlesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
-
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Spacing.md,
-  },
-  title: {
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  usageChip: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  usageChipLimit: {
-    borderColor: Colors.negative + '80',
-    backgroundColor: Colors.negative + '14',
-  },
-  usageChipText: {
-    fontSize: FontSize.xs,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-  },
-  usageChipTextLimit: {
-    color: Colors.negative,
-  },
-
-  modeRow: {
-    flexDirection: 'row',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: 3,
-    gap: 3,
-    marginBottom: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  modeBtn: {
-    flex: 1,
-    paddingVertical: 9,
-    borderRadius: BorderRadius.sm,
-    alignItems: 'center',
-  },
-  modeBtnActive: { backgroundColor: Colors.card },
-  modeBtnText: { fontSize: FontSize.sm, color: Colors.textTertiary, fontWeight: '600' },
-  modeBtnTextActive: { color: Colors.primary },
-
-  hintText: {
-    fontSize: FontSize.xs,
-    color: Colors.textTertiary,
-    marginBottom: Spacing.sm,
-    paddingHorizontal: 2,
-  },
-
-  inputWrapper: { position: 'relative', marginBottom: Spacing.sm },
-  input: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.md,
-    paddingLeft: Spacing.md,
-    paddingRight: 36,
-    height: 48,
-    color: Colors.text,
-    fontSize: FontSize.sm,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  inputMulti: {
-    height: 'auto',
-    minHeight: 120,
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.sm,
-    textAlignVertical: 'top',
-  },
-  clearBtn: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  clearBtnTop: { top: 4, bottom: 'auto' },
-  clearBtnText: { fontSize: 18, color: Colors.textTertiary, lineHeight: 22 },
-
-  extractBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: Spacing.md,
-  },
-  extractBtnDisabled: { opacity: 0.4 },
-  extractBtnText: { fontSize: FontSize.md, fontWeight: '700', color: '#06090F' },
-
-  stageText: {
-    textAlign: 'center',
-    fontSize: FontSize.xs,
-    color: Colors.textSecondary,
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-
-  candidateSection: { marginTop: Spacing.sm },
-  candidateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  sectionAccent: {
-    width: 3,
-    height: 16,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-  },
-  candidateTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.text },
-  countChip: {
-    backgroundColor: Colors.primaryMuted,
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: 7,
-    paddingVertical: 1,
-    borderWidth: 1,
-    borderColor: Colors.primaryDim,
-  },
-  countChipText: { fontSize: FontSize.xs, fontWeight: '700', color: Colors.primary },
-
-  empty: {
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingTop: Spacing.xxl,
-    padding: Spacing.xl,
-  },
-  emptySymbol: {
-    fontSize: 40,
-    color: Colors.textTertiary,
-    lineHeight: 50,
-  },
-  emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: Colors.text },
-  emptyText: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  emptyTip: {
-    marginTop: Spacing.sm,
-    backgroundColor: Colors.primaryMuted,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.primaryDim,
-  },
-  emptyTipText: {
-    fontSize: FontSize.xs,
-    color: Colors.primary,
-    textAlign: 'center',
-  },
-});
+function createStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: Spacing.md,
+    },
+    title: {
+      fontSize: FontSize.xxl,
+      fontWeight: '800',
+      color: c.text,
+      letterSpacing: -0.5,
+    },
+    usageChip: {
+      backgroundColor: c.surface,
+      borderRadius: BorderRadius.full,
+      paddingHorizontal: Spacing.sm,
+      paddingVertical: 4,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+    },
+    usageChipLimit: { borderColor: c.negative + '80', backgroundColor: c.negative + '14' },
+    usageChipText: { fontSize: FontSize.xs, fontWeight: '600', color: c.textSecondary },
+    usageChipTextLimit: { color: c.negative },
+    modeRow: {
+      flexDirection: 'row',
+      backgroundColor: c.surface,
+      borderRadius: BorderRadius.md,
+      padding: 3,
+      gap: 3,
+      marginBottom: Spacing.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+    },
+    modeBtn: { flex: 1, paddingVertical: 9, borderRadius: BorderRadius.sm, alignItems: 'center' },
+    modeBtnActive: { backgroundColor: c.card },
+    modeBtnText: { fontSize: FontSize.sm, color: c.textTertiary, fontWeight: '600' },
+    modeBtnTextActive: { color: c.primary },
+    hintText: {
+      fontSize: FontSize.xs,
+      color: c.textTertiary,
+      marginBottom: Spacing.sm,
+      paddingHorizontal: 2,
+    },
+    inputWrapper: { position: 'relative', marginBottom: Spacing.sm },
+    input: {
+      backgroundColor: c.card,
+      borderRadius: BorderRadius.md,
+      paddingLeft: Spacing.md,
+      paddingRight: 36,
+      height: 48,
+      color: c.text,
+      fontSize: FontSize.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+    },
+    inputMulti: {
+      height: 'auto',
+      minHeight: 120,
+      paddingTop: Spacing.sm,
+      paddingBottom: Spacing.sm,
+      textAlignVertical: 'top',
+    },
+    clearBtn: {
+      position: 'absolute',
+      right: 0, top: 0, bottom: 0,
+      width: 36,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    clearBtnTop: { top: 4, bottom: 'auto' },
+    clearBtnText: { fontSize: 18, color: c.textTertiary, lineHeight: 22 },
+    extractBtn: {
+      backgroundColor: c.primary,
+      borderRadius: BorderRadius.md,
+      height: 48,
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 6,
+      marginBottom: Spacing.md,
+    },
+    extractBtnDisabled: { opacity: 0.4 },
+    extractBtnText: { fontSize: FontSize.md, fontWeight: '700', color: '#06090F' },
+    stageText: {
+      textAlign: 'center',
+      fontSize: FontSize.xs,
+      color: c.textSecondary,
+      marginTop: -Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    candidateSection: { marginTop: Spacing.sm },
+    candidateHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing.sm,
+    },
+    sectionAccent: { width: 3, height: 16, borderRadius: 2, backgroundColor: c.primary },
+    candidateTitle: { fontSize: FontSize.md, fontWeight: '700', color: c.text },
+    countChip: {
+      backgroundColor: c.primaryMuted,
+      borderRadius: BorderRadius.full,
+      paddingHorizontal: 7,
+      paddingVertical: 1,
+      borderWidth: 1,
+      borderColor: c.primaryDim,
+    },
+    countChipText: { fontSize: FontSize.xs, fontWeight: '700', color: c.primary },
+    empty: {
+      alignItems: 'center',
+      gap: Spacing.sm,
+      paddingTop: Spacing.xxl,
+      padding: Spacing.xl,
+    },
+    emptySymbol: { fontSize: 40, color: c.textTertiary, lineHeight: 50 },
+    emptyTitle: { fontSize: FontSize.lg, fontWeight: '700', color: c.text },
+    emptyText: {
+      fontSize: FontSize.sm,
+      color: c.textSecondary,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    emptyTip: {
+      marginTop: Spacing.sm,
+      backgroundColor: c.primaryMuted,
+      borderRadius: BorderRadius.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      borderWidth: 1,
+      borderColor: c.primaryDim,
+    },
+    emptyTipText: { fontSize: FontSize.xs, color: c.primary, textAlign: 'center' },
+  });
+}

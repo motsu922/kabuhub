@@ -1,8 +1,10 @@
 import React from 'react';
 import { Animated, View, StyleSheet } from 'react-native';
-import { Colors, BorderRadius, Spacing } from '../../constants/theme';
+import { BorderRadius, Spacing } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export function SkeletonCard() {
+  const { colors } = useTheme();
   const shimmer = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -17,18 +19,18 @@ export function SkeletonCard() {
   const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.2, 0.5] });
 
   return (
-    <View style={styles.card}>
-      <View style={styles.accentBar} />
+    <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.accentBar, { backgroundColor: colors.cardBorder }]} />
       <Animated.View style={[styles.content, { opacity }]}>
         <View style={styles.left}>
-          <View style={[styles.bone, { width: '62%', height: 14 }]} />
-          <View style={[styles.bone, { width: '22%', height: 10, marginTop: 3 }]} />
-          <View style={[styles.bone, { width: '48%', height: 18, marginTop: 5 }]} />
-          <View style={[styles.bone, { width: '30%', height: 10, marginTop: 3 }]} />
+          <View style={[styles.bone, { width: '62%', height: 14, backgroundColor: colors.cardBorder }]} />
+          <View style={[styles.bone, { width: '22%', height: 10, marginTop: 3, backgroundColor: colors.cardBorder }]} />
+          <View style={[styles.bone, { width: '48%', height: 18, marginTop: 5, backgroundColor: colors.cardBorder }]} />
+          <View style={[styles.bone, { width: '30%', height: 10, marginTop: 3, backgroundColor: colors.cardBorder }]} />
         </View>
         <View style={styles.right}>
-          <View style={[styles.bone, { width: 68, height: 36, borderRadius: 6 }]} />
-          <View style={[styles.bone, { width: 32, height: 10, marginTop: 3 }]} />
+          <View style={[styles.bone, { width: 68, height: 36, borderRadius: 6, backgroundColor: colors.cardBorder }]} />
+          <View style={[styles.bone, { width: 32, height: 10, marginTop: 3, backgroundColor: colors.cardBorder }]} />
         </View>
       </Animated.View>
     </View>
@@ -38,18 +40,13 @@ export function SkeletonCard() {
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    backgroundColor: Colors.card,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
     borderWidth: 1,
-    borderColor: Colors.cardBorder,
     overflow: 'hidden',
     height: 92,
   },
-  accentBar: {
-    width: 3,
-    backgroundColor: Colors.cardBorder,
-  },
+  accentBar: { width: 3 },
   content: {
     flex: 1,
     flexDirection: 'row',
@@ -60,8 +57,5 @@ const styles = StyleSheet.create({
   },
   left: { flex: 1, gap: 0 },
   right: { alignItems: 'flex-end', gap: 0, marginLeft: Spacing.md },
-  bone: {
-    backgroundColor: Colors.cardBorder,
-    borderRadius: 4,
-  },
+  bone: { borderRadius: 4 },
 });

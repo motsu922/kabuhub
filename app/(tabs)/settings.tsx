@@ -9,7 +9,8 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
+import { useTheme } from '../../src/contexts/ThemeContext';
 import { StorageService } from '../../src/services/storage';
 import { SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { UserSettings, SecuritiesApp } from '../../src/types';
@@ -21,6 +22,9 @@ const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string; desc: string }[] =
 ];
 
 export default function SettingsScreen() {
+  const { colors, theme, toggleTheme } = useTheme();
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+
   const [settings, setSettings] = useState<UserSettings>({
     securitiesApp: null,
     notificationsEnabled: true,
@@ -59,8 +63,25 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>設定</Text>
 
+        {/* テーマ */}
+        <SectionHeader title="テーマ" styles={styles} />
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={toggleTheme} activeOpacity={0.7}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowTitle}>
+                {theme === 'dark' ? '🌙 ダーク' : '☀️ ライト'}
+              </Text>
+              <Text style={styles.rowDesc}>タップで切り替え</Text>
+            </View>
+            <View style={[styles.themeSwitch, { backgroundColor: theme === 'dark' ? colors.surface : colors.primaryMuted, borderColor: theme === 'dark' ? colors.cardBorder : colors.primary }]}>
+              <Text style={styles.themeSwitchIcon}>{theme === 'dark' ? '🌙' : '☀️'}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* 証券アプリ */}
-        <SectionHeader title="証券アプリ" />
+        <View style={styles.spacer} />
+        <SectionHeader title="証券アプリ" styles={styles} />
         <Text style={styles.sectionDesc}>ワンタップで起動する証券アプリを選択</Text>
 
         <View style={styles.card}>
@@ -99,7 +120,7 @@ export default function SettingsScreen() {
 
         {/* 免責事項 */}
         <View style={styles.spacer} />
-        <SectionHeader title="免責事項" />
+        <SectionHeader title="免責事項" styles={styles} />
         <View style={styles.disclaimerCard}>
           <Text style={styles.disclaimerText}>
             本アプリは投資判断の参考情報を整理するためのツールです。{'\n'}
@@ -118,7 +139,7 @@ export default function SettingsScreen() {
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
+function SectionHeader({ title, styles }: { title: string; styles: ReturnType<typeof createStyles> }) {
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionAccent} />
@@ -127,125 +148,136 @@ function SectionHeader({ title }: { title: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
-  title: {
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
-    color: Colors.text,
-    letterSpacing: -0.5,
-    marginBottom: Spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
-  sectionAccent: {
-    width: 3,
-    height: 14,
-    borderRadius: 2,
-    backgroundColor: Colors.primary,
-  },
-  sectionTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: Colors.text,
-  },
-  sectionDesc: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.sm,
-    paddingLeft: Spacing.sm + 3,
-  },
-  spacer: { height: Spacing.xl },
-  card: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    overflow: 'hidden',
-    marginBottom: Spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.md,
-  },
-  rowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.separator,
-  },
-  rowSelected: {
-    backgroundColor: Colors.primaryMuted,
-  },
-  rowLeft: { gap: 2 },
-  rowTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
-    color: Colors.text,
-  },
-  rowTitleSelected: { color: Colors.primary },
-  rowDesc: {
-    fontSize: FontSize.xs,
-    color: Colors.textTertiary,
-  },
-  checkBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#06090F',
-  },
-  actionBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
-  },
-  actionBtnText: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    color: '#06090F',
-  },
-  disclaimerCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    borderLeftWidth: 2,
-    borderLeftColor: Colors.textTertiary,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-  },
-  disclaimerText: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    lineHeight: 22,
-  },
-  versionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.xl,
-    paddingHorizontal: Spacing.xs,
-  },
-  versionLabel: {
-    fontSize: FontSize.sm,
-    color: Colors.textTertiary,
-    fontWeight: '600',
-  },
-  versionText: {
-    fontSize: FontSize.sm,
-    color: Colors.textTertiary,
-  },
-});
+function createStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: c.background },
+    scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+    title: {
+      fontSize: FontSize.xxl,
+      fontWeight: '800',
+      color: c.text,
+      letterSpacing: -0.5,
+      marginBottom: Spacing.lg,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Spacing.sm,
+      marginBottom: Spacing.xs,
+    },
+    sectionAccent: {
+      width: 3,
+      height: 14,
+      borderRadius: 2,
+      backgroundColor: c.primary,
+    },
+    sectionTitle: {
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      color: c.text,
+    },
+    sectionDesc: {
+      fontSize: FontSize.sm,
+      color: c.textSecondary,
+      marginBottom: Spacing.sm,
+      paddingLeft: Spacing.sm + 3,
+    },
+    spacer: { height: Spacing.xl },
+    card: {
+      backgroundColor: c.card,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      overflow: 'hidden',
+      marginBottom: Spacing.sm,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: Spacing.md,
+    },
+    rowBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: c.separator,
+    },
+    rowSelected: {
+      backgroundColor: c.primaryMuted,
+    },
+    rowLeft: { gap: 2 },
+    rowTitle: {
+      fontSize: FontSize.md,
+      fontWeight: '600',
+      color: c.text,
+    },
+    rowTitleSelected: { color: c.primary },
+    rowDesc: {
+      fontSize: FontSize.xs,
+      color: c.textTertiary,
+    },
+    themeSwitch: {
+      width: 40,
+      height: 40,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    themeSwitchIcon: { fontSize: 20 },
+    checkBadge: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: c.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkText: {
+      fontSize: 13,
+      fontWeight: '800',
+      color: '#06090F',
+    },
+    actionBtn: {
+      backgroundColor: c.primary,
+      borderRadius: BorderRadius.md,
+      padding: Spacing.md,
+      alignItems: 'center',
+      marginBottom: Spacing.sm,
+    },
+    actionBtnText: {
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      color: '#06090F',
+    },
+    disclaimerCard: {
+      backgroundColor: c.surface,
+      borderRadius: BorderRadius.md,
+      padding: Spacing.md,
+      borderLeftWidth: 2,
+      borderLeftColor: c.textTertiary,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+    },
+    disclaimerText: {
+      fontSize: FontSize.sm,
+      color: c.textSecondary,
+      lineHeight: 22,
+    },
+    versionRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginTop: Spacing.xl,
+      paddingHorizontal: Spacing.xs,
+    },
+    versionLabel: {
+      fontSize: FontSize.sm,
+      color: c.textTertiary,
+      fontWeight: '600',
+    },
+    versionText: {
+      fontSize: FontSize.sm,
+      color: c.textTertiary,
+    },
+  });
+}

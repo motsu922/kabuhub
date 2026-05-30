@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import Svg, { Polyline, Path, Line, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
-import { Colors } from '../../constants/theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface Props {
   data: number[];
@@ -22,6 +22,7 @@ export function MiniChart({
   showGrid = false,
   showLabels = false,
 }: Props) {
+  const { colors } = useTheme();
   if (!data || data.length < 2) return <View style={{ width, height }} />;
 
   const min = Math.min(...data);
@@ -43,8 +44,8 @@ export function MiniChart({
   const isUp = data[data.length - 1] >= data[0];
   const color =
     positive !== undefined
-      ? positive ? Colors.positive : Colors.negative
-      : isUp ? Colors.positive : Colors.negative;
+      ? positive ? colors.positive : colors.negative
+      : isUp ? colors.positive : colors.negative;
 
   const gradId = `g${Math.abs(data[0]) % 9999}`;
 
@@ -84,7 +85,7 @@ export function MiniChart({
                 y1={y}
                 x2={width}
                 y2={y}
-                stroke={Colors.cardBorder}
+                stroke={colors.cardBorder}
                 strokeWidth={0.5}
                 strokeDasharray="3,3"
               />
@@ -94,7 +95,7 @@ export function MiniChart({
                   y={y + 3.5}
                   textAnchor="end"
                   fontSize={8}
-                  fill={Colors.textTertiary}
+                  fill={colors.textTertiary}
                 >
                   {label}
                 </SvgText>

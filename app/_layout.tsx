@@ -2,25 +2,36 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider } from 'expo-share-intent';
-import { Colors } from '../src/constants/theme';
+import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
 
-export default function RootLayout() {
-  useEffect(() => { RemoteLinkConfig.init(); }, []);
-
+function AppStack() {
+  const { theme, colors } = useTheme();
   return (
-    <ShareIntentProvider>
-      <StatusBar style="light" />
+    <>
+      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,
-          contentStyle: { backgroundColor: Colors.background },
+          contentStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="stock/[code]" options={{ headerShown: false }} />
       </Stack>
-    </ShareIntentProvider>
+    </>
+  );
+}
+
+export default function RootLayout() {
+  useEffect(() => { RemoteLinkConfig.init(); }, []);
+
+  return (
+    <ThemeProvider>
+      <ShareIntentProvider>
+        <AppStack />
+      </ShareIntentProvider>
+    </ThemeProvider>
   );
 }
