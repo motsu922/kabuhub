@@ -136,7 +136,7 @@ export default function StockDetailScreen() {
   }, [code]);
 
   const cycleCommentMode = () => {
-    setCommentMode((m) => m === 'OFF' ? 'LIGHT' : m === 'LIGHT' ? 'LIVE' : 'OFF');
+    setCommentMode((m) => m === 'OFF' ? 'LIVE' : 'OFF');
   };
 
   const chartTime = () =>
@@ -308,8 +308,7 @@ export default function StockDetailScreen() {
             <Text style={styles.cardTitle}>ローソク足チャート</Text>
             <TouchableOpacity style={[styles.commentModeBtn, commentMode !== 'OFF' && styles.commentModeBtnActive]} onPress={cycleCommentMode}>
               {commentMode === 'OFF'  && <Text style={styles.commentModeBtnText}>💬 OFF</Text>}
-              {commentMode === 'LIGHT' && <Text style={[styles.commentModeBtnText, styles.commentModeBtnTextActive]}>💬 LIGHT</Text>}
-              {commentMode === 'LIVE'  && <Text style={[styles.commentModeBtnText, styles.commentModeBtnTextActive]}>💬 LIVE ●</Text>}
+              {commentMode === 'LIVE' && <Text style={[styles.commentModeBtnText, styles.commentModeBtnTextActive]}>💬 ON</Text>}
             </TouchableOpacity>
           </View>
           <View style={styles.rangeButtons}>
@@ -343,7 +342,6 @@ export default function StockDetailScreen() {
             {commentMode !== 'OFF' && ohlc.length > 0 && (
               <CommentOverlay
                 comments={liveComments}
-                mode={commentMode}
                 chartWidth={chartWidth}
                 chartHeight={220}
               />

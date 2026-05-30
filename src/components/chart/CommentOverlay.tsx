@@ -11,21 +11,18 @@ interface ActiveComment {
 
 interface Props {
   comments: CommentDoc[];
-  mode: Exclude<CommentMode, 'OFF'>;
   chartWidth: number;
   chartHeight: number;
 }
 
-const LANES      = 4;
-const DUR_LIVE   = 7000;
-const DUR_LIGHT  = 10000;
-const MAX_LIVE   = 8;
-const MAX_LIGHT  = 4;
+const LANES    = 4;
+const DURATION = 7000;
+const MAX      = 8;
 
-export function CommentOverlay({ comments, mode, chartWidth, chartHeight }: Props) {
+export function CommentOverlay({ comments, chartWidth, chartHeight }: Props) {
   const [active, setActive] = useState<ActiveComment[]>([]);
-  const laneTimes   = useRef<number[]>(new Array(LANES).fill(0));
-  const seenIds     = useRef(new Set<string>());
+  const laneTimes = useRef<number[]>(new Array(LANES).fill(0));
+  const seenIds   = useRef(new Set<string>());
 
   const getLane = useCallback((): number => {
     let best = 0;
@@ -39,21 +36,13 @@ export function CommentOverlay({ comments, mode, chartWidth, chartHeight }: Prop
   useEffect(() => {
     if (!comments.length) return;
 
-    const duration = mode === 'LIVE' ? DUR_LIVE : DUR_LIGHT;
-    const maxActive = mode === 'LIVE' ? MAX_LIVE : MAX_LIGHT;
-
-    // LIGHT は半数だけ表示
-    const candidates = mode === 'LIGHT'
-      ? comments.filter((_, i) => i % 2 === 0)
-      : comments;
-
     setActive((prev) => {
-      if (prev.length >= maxActive) return prev;
+      if (prev.length >= MAX) return prev;
 
       const newItems: ActiveComment[] = [];
-      for (const c of candidates) {
+      for (const c of comments) {
         if (seenIds.current.has(c.id)) continue;
-        if (prev.length + newItems.length >= maxActive) break;
+        if (prev.length + newItems.length >= MAX) break;
         seenIds.current.add(c.id);
 
         const anim = new Animated.Value(chartWidth + 10);
@@ -62,7 +51,7 @@ export function CommentOverlay({ comments, mode, chartWidth, chartHeight }: Prop
 
         Animated.timing(anim, {
           toValue: -280,
-          duration,
+          duration: DURATION,
           useNativeDriver: true,
         }).start(() => {
           setActive((a) => a.filter((x) => x.id !== c.id));
@@ -71,14 +60,12 @@ export function CommentOverlay({ comments, mode, chartWidth, chartHeight }: Prop
 
       return [...prev, ...newItems];
     });
-  }, [comments, mode, chartWidth, getLane]);
+  }, [comments, chartWidth, getLane]);
 
   const laneY = (lane: number): number => {
     const pad = chartHeight * 0.12;
     return pad + (lane / (LANES - 1)) * (chartHeight - pad * 2);
   };
-
-  const opacity = mode === 'LIGHT' ? 0.55 : 0.88;
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.container]} pointerEvents="none">
@@ -87,7 +74,7 @@ export function CommentOverlay({ comments, mode, chartWidth, chartHeight }: Prop
           key={c.id}
           style={[
             styles.comment,
-            { top: laneY(c.lane) - 8, opacity, transform: [{ translateX: c.anim }] },
+            { top: laneY(c.lane) - 8, transform: [{ translateX: c.anim }] },
           ]}
           numberOfLines={1}
         >

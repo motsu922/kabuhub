@@ -5,7 +5,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 
-export type CommentMode = 'OFF' | 'LIGHT' | 'LIVE';
+export type CommentMode = 'OFF' | 'LIVE';
 export type CommentStatus = 'active' | 'hidden' | 'reported';
 
 export interface CommentDoc {
@@ -23,7 +23,6 @@ export interface CommentDoc {
 const RATE_LIMIT_MS = 30_000;       // 連投制限 30秒
 const MAX_TEXT_LENGTH = 50;
 const FETCH_LIMIT_LIVE = 50;
-const FETCH_LIMIT_LIGHT = 20;
 
 const NG_WORDS = [
   '死ね', '殺', 'バカ', 'アホ', 'うざい', 'きもい',
@@ -98,11 +97,10 @@ export const CommentService = {
     mode: Exclude<CommentMode, 'OFF'>,
     onComments: (comments: CommentDoc[]) => void,
   ): () => void {
-    const fetchLimit = mode === 'LIVE' ? FETCH_LIMIT_LIVE : FETCH_LIMIT_LIGHT;
     const q = query(
       messagesRef(symbol),
       orderBy('createdAt', 'desc'),
-      limit(fetchLimit),
+      limit(FETCH_LIMIT_LIVE),
     );
 
     return onSnapshot(q, (snap) => {
@@ -122,8 +120,7 @@ export const CommentService = {
         })
         .filter((c) => c.status === 'active');
 
-      // LIGHTは最新10件のみ
-      onComments(mode === 'LIGHT' ? docs.slice(0, 10) : docs);
+      onComments(docs);
     });
   },
 
