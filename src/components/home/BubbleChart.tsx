@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Animated,
 } from 'react-native';
 import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
@@ -297,6 +297,14 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
                 );
               })}
 
+              {/* Fireworks: 持ってる & +10%以上 */}
+              {bubbles
+                .filter(b => b.group === 'holding' && b.pct >= 10)
+                .map(b => (
+                  <FireworkEffect key={`fw-${b.stock.code}`} x={b.x} y={b.y} />
+                ))
+              }
+
             </View>
           </ScrollView>
         </View>
@@ -386,6 +394,76 @@ function Stat({ label, value, valueColor, colors }: {
     <View style={{ alignItems: 'center', flex: 1 }}>
       <Text style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 2 }}>{label}</Text>
       <Text style={{ fontSize: 13, fontWeight: '700', color: valueColor ?? colors.text }}>{value}</Text>
+    </View>
+  );
+}
+
+/* ── Firework Effect ─────────────────────────────────────────────────────── */
+
+const FW_COLORS = ['#FFD700', '#FF6B35', '#A8E063', '#56CCF2', '#FF69B4', '#FFA500', '#C084FC', '#FB7185'];
+const FW_N = 10;
+
+function FireworkEffect({ x, y }: { x: number; y: number }) {
+  const anims = useRef(
+    Array.from({ length: FW_N }, () => ({
+      pos:     new Animated.ValueXY({ x: 0, y: 0 }),
+      opacity: new Animated.Value(0),
+      scale:   new Animated.Value(1),
+    }))
+  ).current;
+
+  const burst = useCallback(() => {
+    anims.forEach(a => {
+      a.pos.setValue({ x: 0, y: 0 });
+      a.opacity.setValue(0);
+      a.scale.setValue(1);
+    });
+    Animated.parallel(
+      anims.map((a, i) => {
+        const angle = (i / FW_N) * Math.PI * 2;
+        const dist  = 18 + Math.random() * 16;
+        const dx    = Math.cos(angle) * dist;
+        const dy    = Math.sin(angle) * dist - 10; // upward bias
+        return Animated.parallel([
+          Animated.timing(a.pos, { toValue: { x: dx, y: dy }, duration: 750, useNativeDriver: true }),
+          Animated.sequence([
+            Animated.timing(a.opacity, { toValue: 1, duration: 80,  useNativeDriver: true }),
+            Animated.timing(a.opacity, { toValue: 0, duration: 670, useNativeDriver: true }),
+          ]),
+          Animated.timing(a.scale,   { toValue: 0.2, duration: 750, useNativeDriver: true }),
+        ]);
+      })
+    ).start();
+  }, [anims]);
+
+  useEffect(() => {
+    const t  = setTimeout(burst, 300 + Math.random() * 500);
+    const iv = setInterval(burst, 3500);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, [burst]);
+
+  return (
+    <View style={{ position: 'absolute', left: x, top: y }} pointerEvents="none">
+      {anims.map((a, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            position: 'absolute',
+            width: 5,
+            height: 5,
+            borderRadius: 2.5,
+            backgroundColor: FW_COLORS[i % FW_COLORS.length],
+            left: -2.5,
+            top: -2.5,
+            opacity: a.opacity,
+            transform: [
+              { translateX: a.pos.x },
+              { translateY: a.pos.y },
+              { scale: a.scale },
+            ],
+          }}
+        />
+      ))}
     </View>
   );
 }
