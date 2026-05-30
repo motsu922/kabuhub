@@ -54,7 +54,7 @@ export interface Article {
   isProcessed: boolean;
 }
 
-export type UserIntention = 'buy' | 'sell' | 'neutral';
+export type UserIntention = 'buy' | 'hold' | 'sell' | 'neutral';
 
 export interface WatchlistItem {
   stockCode: string;

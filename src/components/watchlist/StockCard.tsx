@@ -40,6 +40,7 @@ export function StockCard({ stock, onPress, intention = 'neutral' }: Props) {
 
   const INTENTION_CONFIG: Record<UserIntention, { accent: string; label: string; show: boolean }> = {
     buy:     { accent: colors.primary,  label: '買いたい', show: true },
+    hold:    { accent: colors.positive, label: '持ってる', show: true },
     sell:    { accent: colors.negative, label: '売りたい', show: true },
     neutral: { accent: '',              label: '',         show: false },
   };

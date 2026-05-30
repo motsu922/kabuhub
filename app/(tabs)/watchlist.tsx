@@ -22,10 +22,10 @@ import { StockDataService } from '../../src/services/stockData';
 import { SubscriptionService, FREE_WATCHLIST_LIMIT } from '../../src/services/subscriptionService';
 import { Stock, UserIntention } from '../../src/types';
 
-type FilterTab = 'all' | 'buy' | 'sell';
+type FilterTab = 'all' | 'buy' | 'hold' | 'sell';
 type ViewMode = 'intention' | 'group';
 
-const INTENTION_ORDER: Record<UserIntention, number> = { buy: 0, neutral: 1, sell: 2 };
+const INTENTION_ORDER: Record<UserIntention, number> = { buy: 0, hold: 1, sell: 2, neutral: 3 };
 
 type ListItem =
   | { type: 'header'; intention: UserIntention; count: number }
@@ -47,19 +47,22 @@ export default function WatchlistScreen() {
 
   const INTENTION_SECTION_CONFIG: Record<UserIntention, { label: string; color: string }> = {
     buy:     { label: '買いたい',      color: colors.primary },
+    hold:    { label: '持ってる',      color: colors.positive },
     sell:    { label: '売りたい',      color: colors.negative },
     neutral: { label: 'ニュートラル', color: colors.textSecondary },
   };
 
   const counts = useMemo(() => {
     const buy  = stocks.filter((s) => getItem(s.code)?.intention === 'buy').length;
+    const hold = stocks.filter((s) => getItem(s.code)?.intention === 'hold').length;
     const sell = stocks.filter((s) => getItem(s.code)?.intention === 'sell').length;
-    return { buy, sell };
+    return { buy, hold, sell };
   }, [stocks, items]);
 
   const filteredStocks = useMemo(() => {
     let list = stocks;
     if (filter === 'buy')  list = stocks.filter((s) => getItem(s.code)?.intention === 'buy');
+    if (filter === 'hold') list = stocks.filter((s) => getItem(s.code)?.intention === 'hold');
     if (filter === 'sell') list = stocks.filter((s) => getItem(s.code)?.intention === 'sell');
     return [...list].sort((a, b) => {
       const ia = INTENTION_ORDER[getItem(a.code)?.intention ?? 'neutral'];
@@ -89,13 +92,13 @@ export default function WatchlistScreen() {
     if (filter !== 'all' || filteredStocks.length === 0) {
       return filteredStocks.map((stock) => ({ type: 'stock', stock }));
     }
-    const groups: Record<UserIntention, Stock[]> = { buy: [], neutral: [], sell: [] };
+    const groups: Record<UserIntention, Stock[]> = { buy: [], hold: [], sell: [], neutral: [] };
     filteredStocks.forEach((s) => {
       const intention = getItem(s.code)?.intention ?? 'neutral';
       groups[intention].push(s);
     });
     const result: ListItem[] = [];
-    (['buy', 'neutral', 'sell'] as UserIntention[]).forEach((intention) => {
+    (['buy', 'hold', 'sell', 'neutral'] as UserIntention[]).forEach((intention) => {
       if (groups[intention].length > 0) {
         result.push({ type: 'header', intention, count: groups[intention].length });
         groups[intention].forEach((stock) => result.push({ type: 'stock', stock }));
@@ -232,6 +235,7 @@ export default function WatchlistScreen() {
         <View style={styles.filterRow}>
           <FilterChip label="全て"    count={stocks.length} active={filter === 'all'}  onPress={() => handleSetFilter('all')}  color={colors.textSecondary} styles={styles} />
           <FilterChip label="買いたい" count={counts.buy}    active={filter === 'buy'}  onPress={() => handleSetFilter('buy')}  color={colors.primary}       styles={styles} />
+          <FilterChip label="持ってる" count={counts.hold}   active={filter === 'hold'} onPress={() => handleSetFilter('hold')} color={colors.positive}      styles={styles} />
           <FilterChip label="売りたい" count={counts.sell}   active={filter === 'sell'} onPress={() => handleSetFilter('sell')} color={colors.negative}      styles={styles} />
         </View>
       )}

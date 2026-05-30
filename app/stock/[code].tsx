@@ -482,8 +482,9 @@ export default function StockDetailScreen() {
           const currentIntention: UserIntention = item?.intention ?? 'neutral';
           const INTENTIONS: { value: UserIntention; label: string; color: string }[] = [
             { value: 'buy',     label: '買いたい', color: Colors.positive },
-            { value: 'neutral', label: '中立',     color: Colors.textSecondary },
+            { value: 'hold',    label: '持ってる', color: Colors.primary },
             { value: 'sell',    label: '売りたい', color: Colors.negative },
+            { value: 'neutral', label: '中立',     color: Colors.textSecondary },
           ];
           return (
             <View style={styles.section}>
