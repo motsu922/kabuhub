@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // GitHub Gist の raw URL をここに設定する
 // Gist の内容は下記 DEFAULT_TEMPLATES と同じ JSON 形式
 export const REMOTE_CONFIG_URL =
-  'https://gist.githubusercontent.com/motsu922/kabuhub-links/raw/links.json';
+  'https://gist.githubusercontent.com/motsu922/f868e9908cada7290c697eafccd15826/raw/links.json';
 
 const STORAGE_KEY = '@kabuhub_link_config';
 
