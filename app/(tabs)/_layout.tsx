@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, Platform } from 'react-native';
 import { FontSize } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
+
+// スクリーンのスクロールコンテンツがタブバーに隠れないよう各画面でこの値をpaddingBottomに使う
+export const FLOATING_TAB_BAR_HEIGHT = 100;
 
 const TAB_ICONS = {
   index:     require('../../assets/icons/tab-home.png'),
@@ -16,13 +19,13 @@ function TabIcon({ name, label, focused }: { name: TabName; label: string; focus
   const { colors } = useTheme();
   return (
     <View style={styles.tabItem}>
-      <View style={[styles.pill, focused && { backgroundColor: colors.primaryMuted }]}>
-        <Image
-          source={TAB_ICONS[name]}
-          style={[styles.icon, { tintColor: focused ? colors.primary : colors.textTertiary }]}
-        />
-      </View>
-      <Text style={[styles.label, { color: focused ? colors.primary : colors.textTertiary }]}>{label}</Text>
+      <Image
+        source={TAB_ICONS[name]}
+        style={[styles.icon, { tintColor: focused ? colors.primary : colors.textTertiary }]}
+      />
+      <Text style={[styles.label, { color: focused ? colors.primary : colors.textTertiary }]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -35,12 +38,29 @@ export default function TabLayout() {
         headerShown: false,
         tabBarShowLabel: false,
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.separator,
-          borderTopWidth: 0.5,
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 6,
+          position: 'absolute',
+          bottom: 24,
+          left: 20,
+          right: 20,
+          height: 62,
+          borderRadius: 28,
+          backgroundColor: colors.card,
+          borderTopWidth: 1,
+          borderTopColor: colors.cardBorder,
+          borderWidth: 1,
+          borderColor: colors.cardBorder,
+          paddingBottom: 0,
+          paddingTop: 0,
+          // shadow
+          ...Platform.select({
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.18,
+              shadowRadius: 16,
+            },
+            android: { elevation: 16 },
+          }),
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
@@ -81,22 +101,16 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
-    gap: 2,
-  },
-  pill: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    gap: 3,
+    paddingTop: 6,
   },
   icon: {
-    width: 36,
-    height: 36,
+    width: 24,
+    height: 24,
     resizeMode: 'contain',
   },
   label: {
     fontSize: 10,
     fontWeight: '600',
-    width: 52,
-    textAlign: 'center',
   },
 });

@@ -151,7 +151,7 @@ function SectionHeader({ title, styles }: { title: string; styles: ReturnType<ty
 function createStyles(c: ColorPalette) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+    scroll: { padding: Spacing.md, paddingBottom: 100 },
     title: {
       fontSize: FontSize.xxl,
       fontWeight: '800',
