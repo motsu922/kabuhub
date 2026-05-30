@@ -398,7 +398,7 @@ function createStyles(c: ColorPalette) {
     iconButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
     settingsIcon: { fontSize: 20, color: c.textSecondary },
     refreshIcon: { fontSize: 22, color: c.primary, fontWeight: '700' },
-    scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: 100 },
+    scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: 110 },
     section: { marginBottom: Spacing.xl },
     sectionHeader: {
       flexDirection: 'row',

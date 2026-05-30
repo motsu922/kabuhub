@@ -489,7 +489,7 @@ function createStyles(c: ColorPalette) {
     themeChipActive: { borderColor: c.primary, backgroundColor: c.primaryMuted },
     themeChipText: { fontSize: FontSize.xs, fontWeight: '600', color: c.textTertiary },
     themeChipTextActive: { color: c.primary },
-    list: { padding: Spacing.md, paddingTop: Spacing.xs, paddingBottom: 100 },
+    list: { padding: Spacing.md, paddingTop: Spacing.xs, paddingBottom: 110 },
     empty: {
       flex: 1,
       justifyContent: 'center',

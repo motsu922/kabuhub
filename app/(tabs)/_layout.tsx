@@ -4,7 +4,7 @@ import { FontSize } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 
 // スクリーンのスクロールコンテンツがタブバーに隠れないよう各画面でこの値をpaddingBottomに使う
-export const FLOATING_TAB_BAR_HEIGHT = 100;
+export const FLOATING_TAB_BAR_HEIGHT = 110;
 
 const TAB_ICONS = {
   index:     require('../../assets/icons/tab-home.png'),
@@ -23,7 +23,10 @@ function TabIcon({ name, label, focused }: { name: TabName; label: string; focus
         source={TAB_ICONS[name]}
         style={[styles.icon, { tintColor: focused ? colors.primary : colors.textTertiary }]}
       />
-      <Text style={[styles.label, { color: focused ? colors.primary : colors.textTertiary }]}>
+      <Text
+        style={[styles.label, { color: focused ? colors.primary : colors.textTertiary }]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
@@ -40,10 +43,10 @@ export default function TabLayout() {
         tabBarStyle: {
           position: 'absolute',
           bottom: 24,
-          left: 20,
-          right: 20,
-          height: 68,
-          borderRadius: 28,
+          left: 16,
+          right: 16,
+          height: 76,
+          borderRadius: 30,
           backgroundColor: colors.card,
           borderTopWidth: 1,
           borderTopColor: colors.cardBorder,
@@ -75,7 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="watchlist"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon name="watchlist" label="ウォッチ" focused={focused} />,
+          tabBarIcon: ({ focused }) => <TabIcon name="watchlist" label="リスト" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -101,16 +104,18 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
-    gap: 3,
-    paddingTop: 4,
+    gap: 4,
+    paddingTop: 6,
+    minWidth: 60,
   },
   icon: {
-    width: 28,
-    height: 28,
+    width: 30,
+    height: 30,
     resizeMode: 'contain',
   },
   label: {
     fontSize: 11,
     fontWeight: '600',
+    letterSpacing: -0.3,
   },
 });

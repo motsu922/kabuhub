@@ -239,7 +239,7 @@ export default function ArticlesScreen() {
 function createStyles(c: ColorPalette) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: c.background },
-    scroll: { padding: Spacing.md, paddingBottom: 100 },
+    scroll: { padding: Spacing.md, paddingBottom: 110 },
     titleRow: {
       flexDirection: 'row',
       alignItems: 'center',
