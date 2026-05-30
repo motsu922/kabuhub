@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import ReanimatedReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedReanimatedSwipeable';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
@@ -153,7 +153,7 @@ export default function WatchlistScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
   }, [removeStock]);
 
-  const swipeableRefs = useRef<Map<string, Swipeable>>(new Map());
+  const swipeableRefs = useRef<Map<string, ReanimatedSwipeable>>(new Map());
 
   const renderRightActions = useCallback((code: string) => (
     <TouchableOpacity
@@ -343,7 +343,7 @@ export default function WatchlistScreen() {
               return <GroupSectionHeader label={item.label} count={item.count} />;
             }
             return (
-              <Swipeable
+              <ReanimatedSwipeable
                 ref={(ref) => {
                   if (ref) swipeableRefs.current.set(item.stock.code, ref);
                   else swipeableRefs.current.delete(item.stock.code);
@@ -357,7 +357,7 @@ export default function WatchlistScreen() {
                   intention={getItem(item.stock.code)?.intention ?? 'neutral'}
                   onPress={() => router.push(`/stock/${item.stock.code}`)}
                 />
-              </Swipeable>
+              </ReanimatedSwipeable>
             );
           }}
           contentContainerStyle={styles.list}
