@@ -28,6 +28,43 @@ function intentionGroup(intention: UserIntention | undefined): BubbleFilter {
   return 'watching';
 }
 
+// ── セクター自動判定 ──────────────────────────────────────────────────────────
+// 優先順位: ユーザー設定グループ > 銘柄名キーワード > 4桁コード業種
+const KEYWORD_SECTORS: [RegExp, string][] = [
+  [/半導体|レーザーテック|SCREEN|スクリーン|キオクシア|ルネサス|ソシオネクスト|マクニカ|信越化学|東京エレクトロン/i, '半導体'],
+  [/三菱重工|川崎重工|IHI|防衛|SUBARU|富士重工|ミサイル|護衛艦/i,                                                    '防衛'],
+  [/QPS|ispace|アイスペース|宇宙|スペース|天地人/i,                                                                  '宇宙'],
+  [/フジクラ|古河電|住友電|電線|データセンター|冷却|液冷|光ファイバー/i,                                              'AI・電線'],
+  [/トヨタ|ホンダ|日産|マツダ|スズキ|デンソー|豊田|EV|電気自動車/i,                                                   '自動車'],
+  [/銀行|証券|保険|フィナンシャル|リース|信託/i,                                                                      '金融'],
+  [/ソフトウェア|システム|DX|SaaS|クラウド|サイバー|IT企業/i,                                                         'IT・DX'],
+  [/医薬|製薬|バイオ|医療|ゲノム|病院/i,                                                                              '医薬・バイオ'],
+  [/商社|伊藤忠|丸紅|住友商事|三井物産|三菱商事/i,                                                                    '商社'],
+];
+
+const CODE_FIRST_DIGIT_SECTOR: Record<string, string> = {
+  '1': '建設・農林',
+  '2': '食品',
+  '3': '繊維・素材',
+  '4': '化学',
+  '5': '鉄鋼・金属',
+  '6': '機械・電機',
+  '7': '自動車・輸送',
+  '8': '商社・金融',
+  '9': '情報・通信',
+};
+
+function deriveSector(stock: Stock, item?: WatchlistItem): string {
+  if (item?.group?.trim()) return item.group.trim();
+  for (const [pattern, sector] of KEYWORD_SECTORS) {
+    if (pattern.test(stock.name)) return sector;
+  }
+  if (stock.market !== 'US' && /^\d/.test(stock.code)) {
+    return CODE_FIRST_DIGIT_SECTOR[stock.code[0]] ?? 'その他';
+  }
+  return 'その他';
+}
+
 function fmtVol(v: number): string {
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
   if (v >= 1_000)     return `${(v / 1_000).toFixed(0)}K`;
@@ -73,7 +110,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const sectors = useMemo(() => {
     const set = new Set(filtered.map(st => {
       const item = items.find(i => i.stockCode === st.code);
-      return item?.group?.trim() || 'その他';
+      return deriveSector(st, item);
     }));
     return [...set].sort((a, b) =>
       a === 'その他' ? 1 : b === 'その他' ? -1 : a.localeCompare(b, 'ja')
@@ -94,7 +131,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
 
     return filtered.map((st, idx) => {
       const item   = items.find(i => i.stockCode === st.code);
-      const sector = item?.group?.trim() || 'その他';
+      const sector = deriveSector(st, item);
       const pct    = st.changePercent ?? 0;
       const r      = MIN_R + (rawSizes[idx] / maxSize) * (MAX_R - MIN_R);
       const y      = Math.max(r + 2, Math.min(CHART_H - r - 2, yPx(pct)));
