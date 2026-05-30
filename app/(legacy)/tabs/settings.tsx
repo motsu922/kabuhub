@@ -17,13 +17,13 @@ import { UserSettings, SecuritiesApp } from '../../src/types';
 const BUILD_TIMESTAMP = '2026-05-28 00:00';
 
 const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string; desc: string }[] = [
-  { key: 'ispeed', name: 'iSPEED', desc: '楽天証券' },
+  { key: 'rakuten', name: 'iSPEED', desc: '楽天証券' },
+  { key: 'sbi', name: 'SBI証券', desc: 'SBI証券' },
 ];
 
 export default function SettingsScreen() {
   const [settings, setSettings] = useState<UserSettings>({
-    securitiesApp: null,
-    notificationsEnabled: true,
+    securitiesApp: undefined,
   });
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function SettingsScreen() {
   }, []);
 
   const updateApp = async (app: SecuritiesApp | null) => {
-    const next = { ...settings, securitiesApp: app };
+    const next: UserSettings = { ...settings, securitiesApp: app ?? undefined };
     setSettings(next);
     await StorageService.saveSettings(next);
   };

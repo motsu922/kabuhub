@@ -1,2 +1,5 @@
+import React from 'react';
 import { View } from 'react-native';
-export function CommentOverlay() { return <View />; }
+
+type Props = { comments?: any[]; mode?: 'OFF'|'LIGHT'|'LIVE'; chartWidth?: number; chartHeight?: number };
+export function CommentOverlay(_props: Props) { return <View />; }

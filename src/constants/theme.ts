@@ -7,6 +7,7 @@ export const Colors = {
   textSecondary: '#9CA3AF',
   textTertiary: '#6B7280',
   negative: '#F87171',
+  positive: '#22C55E',
   primary: '#60A5FA',
   primaryMuted: '#1E3A8A33',
   primaryDim: '#1E40AF66',
@@ -17,6 +18,6 @@ export const Colors = {
   statusAlert: '#EF4444',
 };
 
-export const Spacing = { xs: 4, sm: 8, md: 16, lg: 20, xl: 24, xxl: 32 };
-export const FontSize = { xs: 11, sm: 13, md: 15, lg: 18, xl: 22, xxl: 28 };
+export const Spacing = { xs: 4, sm: 8, md: 16, lg: 20, xl: 24, xxl: 32, xxxl: 40 };
+export const FontSize = { xs: 11, sm: 13, md: 15, lg: 18, xl: 22, xxl: 28, xxxl: 36 };
 export const BorderRadius = { sm: 8, md: 12, lg: 16, full: 999 };

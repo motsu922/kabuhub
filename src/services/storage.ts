@@ -74,7 +74,7 @@ export const StorageService = {
     const raw = await AsyncStorage.getItem(KEYS.articles);
     if (!raw) return [];
     const articles: Article[] = JSON.parse(raw);
-    return articles.map((a) => ({ ...a, savedAt: new Date(a.savedAt) }));
+    return articles.map((a) => ({ ...a, savedAt: a.savedAt ? new Date(a.savedAt as any) : undefined }));
   },
 
   async saveArticle(article: Article): Promise<void> {
@@ -109,7 +109,7 @@ export const StorageService = {
     const raw = await AsyncStorage.getItem(KEYS.stocks);
     if (!raw) return [];
     const stocks: Stock[] = JSON.parse(raw);
-    return stocks.map((s) => ({ ...s, updatedAt: new Date(s.updatedAt) }));
+    return stocks.map((s) => ({ ...s, updatedAt: s.updatedAt ? new Date(s.updatedAt as any) : undefined }));
   },
 
   async cacheStocks(stocks: Stock[]): Promise<void> {

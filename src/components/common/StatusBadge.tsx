@@ -1,2 +1,5 @@
+import React from 'react';
 import { View } from 'react-native';
-export function StatusBadge() { return <View />; }
+
+type Props = { status?: string };
+export function StatusBadge(_props: Props) { return <View />; }

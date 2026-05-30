@@ -15,7 +15,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
-import { Stock, OHLCBar, AlertSettings, UserIntention, NewsItem } from '../../src/types';
+import { Stock, OHLCBar, AlertSettings, UserIntention, NewsItem, SecuritiesApp } from '../../src/types';
 import { StockDataService, ChartInterval } from '../../src/services/stockData';
 import { ExternalLinks, SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { StatusBadge } from '../../src/components/common/StatusBadge';
@@ -49,9 +49,9 @@ export default function StockDetailScreen() {
 
   const [stock, setStock] = useState<Stock | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [securitiesApp, setSecuritiesApp] = useState<string | null>(null);
+  const [securitiesApp, setSecuritiesApp] = useState<SecuritiesApp | null>(null);
   const [ohlc, setOhlc] = useState<OHLCBar[]>([]);
-  const [interval, setInterval] = useState<ChartInterval>('1d');
+  const [interval, setChartInterval] = useState<ChartInterval>('1d');
   const [relatedStocks, setRelatedStocks] = useState<Stock[]>([]);
   const [techScore, setTechScore] = useState<TechnicalScore | null>(null);
   const [techSignals, setTechSignals] = useState<TechnicalSignal[]>([]);
@@ -97,7 +97,7 @@ export default function StockDetailScreen() {
         }));
       }
     });
-    StorageService.getSettings().then((s) => setSecuritiesApp(s.securitiesApp));
+    StorageService.getSettings().then((s) => setSecuritiesApp(s.securitiesApp ?? null));
   }, [code]);
 
   useEffect(() => {
@@ -114,8 +114,8 @@ export default function StockDetailScreen() {
   // 1秒ごとにカウントダウン
   useEffect(() => {
     if (cooldown <= 0) return;
-    const t = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
-    return () => clearInterval(t);
+    const timer = globalThis.setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    return () => globalThis.clearInterval(timer);
   }, [cooldown]);
 
   // コメント購読（モードが OFF 以外のとき）
@@ -140,14 +140,14 @@ export default function StockDetailScreen() {
   };
 
   const chartTime = () =>
-    stock?.updatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) ?? '';
+    (stock?.updatedAt ? new Date(stock.updatedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '');
 
   const postComment = async (text: string) => {
     const result = await CommentService.post(code ?? '', text, chartTime());
     if (result.ok) {
       setCooldown(30);
     } else {
-      Alert.alert('投稿できません', result.error);
+      Alert.alert('投稿できません', 'error' in result ? result.error : '投稿エラー');
     }
     return result.ok;
   };
@@ -266,7 +266,7 @@ export default function StockDetailScreen() {
               : `${stock.price.toLocaleString('ja-JP')}円`}
           </Text>
           <Text style={[styles.change, { color: isUp ? Colors.positive : Colors.negative }]}>
-            {StockDataService.formatChange(stock.change, stock.changePercent, stock.market)}
+            {StockDataService.formatChange(stock.change, stock.changePercent, (stock.market as 'JP' | 'US') ?? 'JP')}
           </Text>
           <Text style={styles.volume}>出来高: {StockDataService.formatVolume(stock.volume)}</Text>
           {(stock.per != null || stock.pbr != null) && (
@@ -298,7 +298,7 @@ export default function StockDetailScreen() {
             );
           })()}
           <Text style={styles.updated}>
-            更新: {stock.updatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
+            更新: {stock.updatedAt ? new Date(stock.updatedAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) : '--:--'}
           </Text>
         </View>
 
@@ -324,7 +324,7 @@ export default function StockDetailScreen() {
               <TouchableOpacity
                 key={key}
                 style={[styles.rangeBtn, interval === key && styles.rangeBtnActive]}
-                onPress={() => setInterval(key)}
+                onPress={() => setChartInterval(key)}
               >
                 <Text style={[styles.rangeBtnText, interval === key && styles.rangeBtnTextActive]}>
                   {label}
@@ -672,7 +672,7 @@ export default function StockDetailScreen() {
                 <View style={styles.newsMeta}>
                   <Text style={styles.newsPublisher}>{n.publisher}</Text>
                   <Text style={styles.newsDate}>
-                    {n.publishedAt.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                    {n.publishedAt ? new Date(n.publishedAt).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }) : ''}
                   </Text>
                 </View>
               </TouchableOpacity>
