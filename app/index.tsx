@@ -8,6 +8,7 @@ export default function HomeScreen() {
         <Text style={styles.title}>KabuHub</Text>
         <Text style={styles.subtitle}>起動確認用の最小画面です</Text>
         <Link href="/dev-status" style={styles.link}>開発ステータスを見る</Link>
+        <Link href="/(legacy)/tabs" style={styles.link}>復元した旧UIを開く</Link>
       </View>
     </SafeAreaView>
   );
