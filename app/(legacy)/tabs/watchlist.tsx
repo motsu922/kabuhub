@@ -342,7 +342,7 @@ export default function WatchlistScreen() {
               <StockCard
                 stock={item.stock}
                 intention={getItem(item.stock.code)?.intention ?? 'neutral'}
-                onPress={() => router.push(`/stock/${item.stock.code}`)}
+                onPress={() => router.push(`/(legacy)/stock/${item.stock.code}`)}
               />
             );
           }}
