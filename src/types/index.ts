@@ -93,7 +93,7 @@ export interface UserSettings {
 
 export interface StockCandidate {
   name: string;
-  code: string;
+  code: string | null;  // コードが特定できない場合は null
   context: string;      // テキスト中での言及内容
   price?: number;
   changePercent?: number;

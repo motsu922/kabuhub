@@ -19,7 +19,9 @@ export function StockCandidateCard({ candidate, isAdded, onAdd }: Props) {
       <View style={styles.left}>
         <View style={styles.nameRow}>
           <Text style={styles.name} numberOfLines={1}>{candidate.name}</Text>
-          <Text style={styles.code}>{candidate.code}</Text>
+          <Text style={[styles.code, !candidate.code && styles.codeUnknown]}>
+            {candidate.code ?? 'コード不明'}
+          </Text>
         </View>
         <Text style={styles.context} numberOfLines={1}>{candidate.context}</Text>
         {candidate.price != null && (
@@ -34,13 +36,13 @@ export function StockCandidateCard({ candidate, isAdded, onAdd }: Props) {
         )}
       </View>
       <TouchableOpacity
-        style={[styles.button, isAdded && styles.buttonAdded]}
+        style={[styles.button, (isAdded || !candidate.code) && styles.buttonAdded]}
         onPress={onAdd}
-        disabled={isAdded}
+        disabled={isAdded || !candidate.code}
         activeOpacity={0.7}
       >
-        <Text style={[styles.buttonText, isAdded && styles.buttonTextAdded]}>
-          {isAdded ? '✓ 登録済' : '+ 追加'}
+        <Text style={[styles.buttonText, (isAdded || !candidate.code) && styles.buttonTextAdded]}>
+          {isAdded ? '✓ 登録済' : !candidate.code ? '追加不可' : '+ 追加'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -75,6 +77,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
+  },
+  codeUnknown: {
+    color: Colors.textTertiary,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
   context: {
     fontSize: FontSize.xs,

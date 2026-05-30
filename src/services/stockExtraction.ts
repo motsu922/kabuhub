@@ -285,7 +285,12 @@ export async function fetchStockCandidates(
           }
         }
       }
-      if (!code || !isCodeLike(code)) return null;
+      // AI抽出で名前はあるがコードが特定できない場合はコード不明として返す
+      // regex抽出でコードが特定できない場合は除外
+      if (!code || !isCodeLike(code)) {
+        if (source === 'ai') return { name, code: null, context: m.context, source };
+        return null;
+      }
 
       // 日本語名を確実に解決
       const resolvedName = await StockDataService.resolveNameByCode(code).catch(() => null);
@@ -299,8 +304,10 @@ export async function fetchStockCandidates(
   const seen = new Set<string>();
   return {
     candidates: results.filter((c): c is StockCandidate => {
-      if (!c || seen.has(c.code)) return false;
-      seen.add(c.code);
+      if (!c) return false;
+      const key = c.code ?? c.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
       return true;
     }),
     sourceText,
