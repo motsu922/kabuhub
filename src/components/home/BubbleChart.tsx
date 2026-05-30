@@ -88,7 +88,6 @@ interface Bubble {
   r: number;
   color: string;
   group: BubbleFilter;
-  volumeRatio?: number;
 }
 
 interface Props {
@@ -141,8 +140,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
       const y           = Math.max(r + 2, Math.min(L.chartH - r - 2, yRaw));
       const x           = sectors.indexOf(sector) * L.colW + L.colW / 2;
       const color       = pct > 0.5 ? colors.positive : pct < -0.5 ? colors.negative : colors.neutral;
-      const volumeRatio = (st.avgVolume20d ?? 0) > 0 ? st.volume / st.avgVolume20d! : undefined;
-      return { stock: st, item, sector, pct, x, y, r, color, group: intentionGroup(item?.intention), volumeRatio };
+      return { stock: st, item, sector, pct, x, y, r, color, group: intentionGroup(item?.intention) };
     });
   }, [filtered, sectors, items, colors, L]);
 
@@ -207,9 +205,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
           </View>
           <View style={s.starRight}>
             <Text style={[s.starPct, { color: colors.positive }]}>+{star.pct.toFixed(2)}%</Text>
-            {star.volumeRatio !== undefined && (
-              <Text style={s.starRatio}>出来高 {star.volumeRatio.toFixed(1)}倍</Text>
-            )}
           </View>
         </TouchableOpacity>
       )}
@@ -330,7 +325,7 @@ function DetailPanel({ b, colors, s, onClose, onNavigate }: {
   onClose: () => void;
   onNavigate: () => void;
 }) {
-  const { stock, item, pct, volumeRatio } = b;
+  const { stock, item, pct } = b;
   const isJP     = stock.market !== 'US';
   const sign     = pct >= 0 ? '+' : '';
   const pctColor = pct >= 0 ? colors.positive : colors.negative;
@@ -363,9 +358,6 @@ function DetailPanel({ b, colors, s, onClose, onNavigate }: {
         <Stat label="現在値" value={priceStr}                          colors={colors} />
         <Stat label="騰落率" value={`${sign}${pct.toFixed(2)}%`}       colors={colors} valueColor={pctColor} />
         <Stat label="出来高" value={fmtVol(stock.volume)}              colors={colors} />
-        {volumeRatio !== undefined && (
-          <Stat label="倍率"  value={`${volumeRatio.toFixed(1)}倍`}    colors={colors} valueColor={colors.primary} />
-        )}
       </View>
 
       {stock.avgVolume20d !== undefined && (
