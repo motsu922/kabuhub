@@ -112,7 +112,27 @@ export default function HomeScreen() {
           { useNativeDriver: false }
         )}
       >
-        <View style={{ height: 60 }} />
+        {/* インラインヘッダー（常に表示、スクロールで隠れる） */}
+        <View style={styles.inlineHeader}>
+          <View>
+            <Text style={styles.appName}>KabuHub</Text>
+            <Text style={styles.subtitle}>
+              {isLoading
+                ? '更新中...'
+                : lastUpdatedAt
+                  ? `更新 ${lastUpdatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}`
+                  : '投資情報ハブ'}
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => router.push('/(tabs)/settings')} style={styles.iconButton}>
+              <Text style={styles.settingsIcon}>⚙</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={refresh} style={styles.iconButton} disabled={isLoading}>
+              <Animated.Text style={[styles.refreshIcon, isLoading && { opacity: 0.3 }]}>↻</Animated.Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {notifications.length > 0 && (
           <Section title="今日の注目" count={notifications.length} colors={colors}>
@@ -350,6 +370,12 @@ function createStyles(c: ColorPalette) {
       paddingTop: Spacing.md,
       paddingBottom: Spacing.sm,
     },
+    inlineHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingBottom: Spacing.md,
+    },
     appName: {
       fontSize: FontSize.xxl,
       fontWeight: '800',
@@ -361,7 +387,7 @@ function createStyles(c: ColorPalette) {
     iconButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
     settingsIcon: { fontSize: 20, color: c.textSecondary },
     refreshIcon: { fontSize: 22, color: c.primary, fontWeight: '700' },
-    scroll: { padding: Spacing.md, paddingBottom: Spacing.xxl },
+    scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: Spacing.xxl },
     section: { marginBottom: Spacing.xl },
     sectionHeader: {
       flexDirection: 'row',
