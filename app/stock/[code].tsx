@@ -10,12 +10,12 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useWindowDimensions } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
-import { Stock, OHLCBar, WatchStyle, AlertSettings, UserIntention } from '../../src/types';
-import { WATCH_PRESETS } from '../../src/constants/watchPresets';
+import { Stock, OHLCBar, AlertSettings, UserIntention, NewsItem } from '../../src/types';
 import { StockDataService, ChartInterval } from '../../src/services/stockData';
 import { ExternalLinks, SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { StatusBadge } from '../../src/components/common/StatusBadge';
@@ -24,12 +24,20 @@ import { useWatchlist } from '../../src/hooks/useWatchlist';
 import { useArticles } from '../../src/hooks/useArticles';
 import { StorageService } from '../../src/services/storage';
 import { detectSignals, computeScore, SIGNAL_POINTS, TechnicalScore, TechnicalSignal } from '../../src/services/technicalAnalysis';
+import { CommentService, CommentDoc, CommentMode } from '../../src/services/commentService';
+import { CommentOverlay } from '../../src/components/chart/CommentOverlay';
+
+const QUICK_REACTIONS = [
+  { emoji: '⬆', text: '⬆' },
+  { emoji: '⬇', text: '⬇' },
+  { emoji: '📉', text: '📉' },
+  { emoji: '🚀', text: '🚀' },
+  { emoji: '😱', text: '😱' },
+] as const;
 
 const EXTERNAL_SERVICES = [
   { key: 'yahooFinance', label: 'Yahoo!ファイナンス', icon: '📊' },
-  { key: 'yahooBBS',     label: 'Yahoo!掲示板',      icon: '💬' },
   { key: 'kabutan',      label: '株探',               icon: '🔍' },
-  { key: 'tradingView',  label: 'TradingView',         icon: '📈' },
   { key: 'minkabv',      label: 'みんかぶ',            icon: '👥' },
 ] as const;
 
@@ -47,8 +55,13 @@ export default function StockDetailScreen() {
   const [relatedStocks, setRelatedStocks] = useState<Stock[]>([]);
   const [techScore, setTechScore] = useState<TechnicalScore | null>(null);
   const [techSignals, setTechSignals] = useState<TechnicalSignal[]>([]);
-  const { isInWatchlist, addStock, removeStock, getItem, updateWatchStyle, updateAlertSettings, updateIntention } = useWatchlist();
-  const [showDetail, setShowDetail] = useState(false);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [commentMode, setCommentMode] = useState<CommentMode>('OFF');
+  const [liveComments, setLiveComments] = useState<CommentDoc[]>([]);
+  const [commentText, setCommentText] = useState('');
+  const [isPosting, setIsPosting] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const { isInWatchlist, addStock, removeStock, getItem, items, updateAlertSettings, updateIntention, updateGroup } = useWatchlist();
   const { articles } = useArticles(code);
 
   useEffect(() => {
@@ -58,8 +71,20 @@ export default function StockDetailScreen() {
       setStock(s);
       setIsLoading(false);
       // モック情報にリアル株価を上書き（前日比も含む）
-      const real = await StockDataService.fetchQuote(code);
-      if (real) setStock((prev) => prev ? { ...prev, ...real } : prev);
+      const [real, valuation] = await Promise.all([
+        StockDataService.fetchQuote(code),
+        StockDataService.fetchValuation(code),
+      ]);
+      if (real || valuation) {
+        setStock((prev) => prev ? {
+          ...prev,
+          ...(real ?? {}),
+          ...(valuation ?? {}),
+        } : prev);
+      }
+
+      // ニュース取得
+      StockDataService.fetchNews(code).then(setNews);
 
       // 関連銘柄をリアル株価付きで取得
       const candidates = StockDataService.getRelatedByTheme(code, s.themes ?? []);
@@ -81,6 +106,25 @@ export default function StockDetailScreen() {
     StockDataService.fetchOHLC(code, interval).then(setOhlc);
   }, [code, interval]);
 
+  // 残りクールダウンを AsyncStorage から復元
+  useEffect(() => {
+    CommentService.remainingCooldown().then((r) => { if (r > 0) setCooldown(r); });
+  }, []);
+
+  // 1秒ごとにカウントダウン
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
+    return () => clearInterval(t);
+  }, [cooldown]);
+
+  // コメント購読（モードが OFF 以外のとき）
+  useEffect(() => {
+    if (!code || commentMode === 'OFF') { setLiveComments([]); return; }
+    const unsub = CommentService.subscribe(code, commentMode, setLiveComments);
+    return unsub;
+  }, [code, commentMode]);
+
   // テクニカル分析用に3ヶ月日足を取得（チャート表示と独立）
   useEffect(() => {
     if (!code) return;
@@ -90,6 +134,36 @@ export default function StockDetailScreen() {
       setTechScore(sigs.length > 0 ? computeScore(sigs) : null);
     });
   }, [code]);
+
+  const cycleCommentMode = () => {
+    setCommentMode((m) => m === 'OFF' ? 'LIGHT' : m === 'LIGHT' ? 'LIVE' : 'OFF');
+  };
+
+  const chartTime = () =>
+    stock?.updatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) ?? '';
+
+  const postComment = async (text: string) => {
+    const result = await CommentService.post(code ?? '', text, chartTime());
+    if (result.ok) {
+      setCooldown(30);
+    } else {
+      Alert.alert('投稿できません', result.error);
+    }
+    return result.ok;
+  };
+
+  const handlePostComment = async () => {
+    if (!commentText.trim() || isPosting || cooldown > 0 || !code) return;
+    setIsPosting(true);
+    const ok = await postComment(commentText.trim());
+    if (ok) setCommentText('');
+    setIsPosting(false);
+  };
+
+  const handleQuickReact = async (text: string) => {
+    if (cooldown > 0 || !code) return;
+    await postComment(text);
+  };
 
   const openExternal = async (url: string) => {
     const canOpen = await Linking.canOpenURL(url);
@@ -186,11 +260,43 @@ export default function StockDetailScreen() {
 
         {/* Price */}
         <View style={styles.priceCard}>
-          <Text style={styles.price}>{stock.price.toLocaleString('ja-JP')}円</Text>
+          <Text style={styles.price}>
+            {stock.market === 'US'
+              ? `$${stock.price.toFixed(2)}`
+              : `${stock.price.toLocaleString('ja-JP')}円`}
+          </Text>
           <Text style={[styles.change, { color: isUp ? Colors.positive : Colors.negative }]}>
-            {StockDataService.formatChange(stock.change, stock.changePercent)}
+            {StockDataService.formatChange(stock.change, stock.changePercent, stock.market)}
           </Text>
           <Text style={styles.volume}>出来高: {StockDataService.formatVolume(stock.volume)}</Text>
+          {(stock.per != null || stock.pbr != null) && (
+            <View style={styles.valuationRow}>
+              {stock.per != null && (
+                <Text style={styles.valuation}>PER <Text style={styles.valuationValue}>{stock.per}倍</Text></Text>
+              )}
+              {stock.pbr != null && (
+                <Text style={styles.valuation}>PBR <Text style={styles.valuationValue}>{stock.pbr}倍</Text></Text>
+              )}
+            </View>
+          )}
+          {(stock.week52High != null || stock.week52Low != null) && (() => {
+            const hi = stock.week52High!;
+            const lo = stock.week52Low!;
+            const range = hi - lo;
+            const pos = range > 0 ? Math.min(Math.max((stock.price - lo) / range, 0), 1) : 0.5;
+            const fmt = (v: number) => stock.market === 'US' ? `$${v.toFixed(2)}` : `${v.toLocaleString('ja-JP')}`;
+            return (
+              <View style={styles.week52Wrap}>
+                <View style={styles.week52LabelRow}>
+                  <Text style={styles.week52Label}>52週安値 {fmt(lo)}</Text>
+                  <Text style={styles.week52Label}>高値 {fmt(hi)}</Text>
+                </View>
+                <View style={styles.week52Track}>
+                  <View style={[styles.week52Dot, { left: `${pos * 100}%` as any }]} />
+                </View>
+              </View>
+            );
+          })()}
           <Text style={styles.updated}>
             更新: {stock.updatedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}
           </Text>
@@ -198,7 +304,14 @@ export default function StockDetailScreen() {
 
         {/* Chart */}
         <View style={styles.chartCard}>
-          <Text style={styles.cardTitle}>ローソク足チャート</Text>
+          <View style={styles.chartCardHeader}>
+            <Text style={styles.cardTitle}>ローソク足チャート</Text>
+            <TouchableOpacity style={[styles.commentModeBtn, commentMode !== 'OFF' && styles.commentModeBtnActive]} onPress={cycleCommentMode}>
+              {commentMode === 'OFF'  && <Text style={styles.commentModeBtnText}>💬 OFF</Text>}
+              {commentMode === 'LIGHT' && <Text style={[styles.commentModeBtnText, styles.commentModeBtnTextActive]}>💬 LIGHT</Text>}
+              {commentMode === 'LIVE'  && <Text style={[styles.commentModeBtnText, styles.commentModeBtnTextActive]}>💬 LIVE ●</Text>}
+            </TouchableOpacity>
+          </View>
           <View style={styles.rangeButtons}>
             {([
               { key: '5m',  label: '1日'   },
@@ -219,12 +332,64 @@ export default function StockDetailScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          {ohlc.length === 0 ? (
-            <View style={styles.chartLoading}>
-              <ActivityIndicator size="small" color={Colors.primary} />
+          <View style={{ position: 'relative' }}>
+            {ohlc.length === 0 ? (
+              <View style={styles.chartLoading}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+              </View>
+            ) : (
+              <CandlestickChart data={ohlc} width={chartWidth} height={220} />
+            )}
+            {commentMode !== 'OFF' && ohlc.length > 0 && (
+              <CommentOverlay
+                comments={liveComments}
+                mode={commentMode}
+                chartWidth={chartWidth}
+                chartHeight={220}
+              />
+            )}
+          </View>
+
+          {/* コメント入力 */}
+          {commentMode !== 'OFF' && (
+            <View style={styles.commentArea}>
+              {/* クイックリアクション */}
+              <View style={styles.quickReactRow}>
+                {QUICK_REACTIONS.map((r) => (
+                  <TouchableOpacity
+                    key={r.emoji}
+                    style={[styles.quickReactBtn, cooldown > 0 && { opacity: 0.35 }]}
+                    onPress={() => handleQuickReact(r.text)}
+                    disabled={cooldown > 0}
+                    activeOpacity={0.6}
+                  >
+                    <Text style={styles.quickReactEmoji}>{r.emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* テキスト入力 */}
+              <View style={styles.commentInputRow}>
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder="コメントを入力... (最大50文字)"
+                  placeholderTextColor="#555"
+                  value={commentText}
+                  onChangeText={(t) => setCommentText(t.slice(0, 50))}
+                  returnKeyType="send"
+                  onSubmitEditing={handlePostComment}
+                  maxLength={50}
+                />
+                <TouchableOpacity
+                  style={[styles.commentSendBtn, (cooldown > 0 || !commentText.trim() || isPosting) && { opacity: 0.4 }]}
+                  onPress={handlePostComment}
+                  disabled={cooldown > 0 || !commentText.trim() || isPosting}
+                >
+                  <Text style={styles.commentSendText}>
+                    {cooldown > 0 ? `${cooldown}秒` : '送信'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          ) : (
-            <CandlestickChart data={ohlc} width={chartWidth} height={220} />
           )}
         </View>
 
@@ -294,8 +459,8 @@ export default function StockDetailScreen() {
           )}
         </View>
 
-        {/* Securities App */}
-        <TouchableOpacity style={styles.securitiesButton} onPress={openSecurities}>
+        {/* Securities App (JP only) */}
+        {stock.market !== 'US' && <TouchableOpacity style={styles.securitiesButton} onPress={openSecurities}>
           <Text style={styles.securitiesIcon}>🏦</Text>
           <Text style={styles.securitiesText}>
             {securitiesApp
@@ -303,24 +468,26 @@ export default function StockDetailScreen() {
               : '証券アプリを開く'}
           </Text>
           <Text style={styles.arrow}>→</Text>
-        </TouchableOpacity>
+        </TouchableOpacity>}
 
-        {/* External Links */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>外部サービス</Text>
-          <View style={styles.linkGrid}>
-            {EXTERNAL_SERVICES.map(({ key, label, icon }) => (
-              <TouchableOpacity
-                key={key}
-                style={styles.linkCard}
-                onPress={() => openExternal(ExternalLinks[key](stock.code))}
-              >
-                <Text style={styles.linkIcon}>{icon}</Text>
-                <Text style={styles.linkLabel}>{label}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* External Links (JP only) */}
+        {stock.market !== 'US' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>外部サービス</Text>
+            <View style={styles.linkGrid}>
+              {EXTERNAL_SERVICES.map(({ key, label, icon }) => (
+                <TouchableOpacity
+                  key={key}
+                  style={styles.linkCard}
+                  onPress={() => openExternal(ExternalLinks[key](stock.code))}
+                >
+                  <Text style={styles.linkIcon}>{icon}</Text>
+                  <Text style={styles.linkLabel}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Themes */}
         {stock.themes && stock.themes.length > 0 && (
@@ -419,90 +586,99 @@ export default function StockDetailScreen() {
           );
         })()}
 
-        {/* 監視設定 */}
+        {/* アラート設定 */}
         {inWatchlist && (() => {
-          const item = getItem(code ?? '');
-          const current = item?.watchStyle;
-          const alerts = item?.alertSettings;
+          const alerts = getItem(code ?? '')?.alertSettings;
           const ALERT_ROWS: { key: keyof AlertSettings; label: string }[] = [
-            { key: 'dip',               label: '押し目候補アラート' },
-            { key: 'surge',             label: '急騰アラート' },
-            { key: 'plunge',            label: '急落アラート' },
-            { key: 'volume',            label: '出来高急増アラート' },
-            { key: 'highApproach',      label: '高値接近アラート' },
-            { key: 'lowApproach',       label: '安値接近アラート' },
-            { key: 'themeChange',       label: 'テーマ変化アラート' },
-            { key: 'consecutiveDecline',label: '続落アラート' },
+            { key: 'dip',                label: '押し目候補アラート' },
+            { key: 'surge',              label: '急騰アラート' },
+            { key: 'volume',             label: '出来高急増アラート' },
+            { key: 'highApproach',       label: '高値接近アラート' },
+            { key: 'themeChange',        label: 'テーマ変化アラート' },
+            { key: 'consecutiveDecline', label: '続落アラート' },
           ];
           const toggleAlert = (key: keyof AlertSettings) => {
             if (!alerts) return;
             updateAlertSettings(code ?? '', { ...alerts, [key]: !alerts[key] });
           };
+          if (!alerts) return null;
           return (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>監視スタイル</Text>
-              <View style={styles.presetRow}>
-                {(['buy', 'sell'] as WatchStyle[]).map((style) => {
-                  const p       = WATCH_PRESETS[style];
-                  const active  = current === style;
+              <Text style={styles.sectionTitle}>アラート設定</Text>
+              <View style={styles.detailCard}>
+                {ALERT_ROWS.map(({ key, label }) => (
+                  <View key={key} style={styles.alertRow}>
+                    <Text style={styles.alertLabel}>{label}</Text>
+                    <Switch
+                      value={alerts[key]}
+                      onValueChange={() => toggleAlert(key)}
+                      trackColor={{ false: Colors.surface, true: Colors.primary + '60' }}
+                      thumbColor={alerts[key] ? Colors.primary : Colors.textTertiary}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* グループ */}
+        {inWatchlist && (() => {
+          const currentGroup = getItem(code ?? '')?.group ?? null;
+          const allGroups = [...new Set(items.filter((i) => i.group).map((i) => i.group!))];
+          return (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>グループ</Text>
+              <View style={styles.groupRow}>
+                {allGroups.map((g) => {
+                  const active = currentGroup === g;
                   return (
                     <TouchableOpacity
-                      key={style}
-                      style={[styles.presetCard, active && styles.presetCardActive]}
-                      onPress={() => updateWatchStyle(code ?? '', style)}
-                      activeOpacity={0.75}
+                      key={g}
+                      style={[styles.groupChip, active && styles.groupChipActive]}
+                      onPress={() => updateGroup(code ?? '', active ? null : g)}
                     >
-                      <Text style={styles.presetEmoji}>{p.emoji}</Text>
-                      <Text style={[styles.presetLabel, active && styles.presetLabelActive]}>
-                        {p.label}
-                      </Text>
-                      <Text style={styles.presetDesc}>{p.description}</Text>
-                      <View style={styles.presetAlerts}>
-                        {p.alerts.map((a) => (
-                          <View key={a} style={styles.presetTag}>
-                            <Text style={styles.presetTagText}>{a}</Text>
-                          </View>
-                        ))}
-                      </View>
-                      {active && (
-                        <View style={styles.presetCheck}>
-                          <Text style={styles.presetCheckText}>✓ 設定中</Text>
-                        </View>
-                      )}
+                      <Text style={[styles.groupChipText, active && styles.groupChipTextActive]}>{g}</Text>
                     </TouchableOpacity>
                   );
                 })}
+                <TouchableOpacity
+                  style={styles.groupChipNew}
+                  onPress={() => Alert.prompt('新しいグループ', 'グループ名を入力', (name) => {
+                    if (name?.trim()) updateGroup(code ?? '', name.trim());
+                  })}
+                >
+                  <Text style={styles.groupChipNewText}>＋ 新規</Text>
+                </TouchableOpacity>
               </View>
-
-              {/* 詳細設定トグル */}
-              <TouchableOpacity
-                style={styles.detailToggle}
-                onPress={() => setShowDetail((v) => !v)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.detailToggleText}>
-                  詳細設定 {showDetail ? '▲' : '▼'}
-                </Text>
-              </TouchableOpacity>
-
-              {showDetail && alerts && (
-                <View style={styles.detailCard}>
-                  {ALERT_ROWS.map(({ key, label }) => (
-                    <View key={key} style={styles.alertRow}>
-                      <Text style={styles.alertLabel}>{label}</Text>
-                      <Switch
-                        value={alerts[key]}
-                        onValueChange={() => toggleAlert(key)}
-                        trackColor={{ false: Colors.surface, true: Colors.primary + '60' }}
-                        thumbColor={alerts[key] ? Colors.primary : Colors.textTertiary}
-                      />
-                    </View>
-                  ))}
-                </View>
+              {currentGroup && (
+                <Text style={styles.groupCurrent}>現在: {currentGroup}</Text>
               )}
             </View>
           );
         })()}
+
+        {/* ニュース */}
+        {news.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>ニュース</Text>
+            {news.map((n) => (
+              <TouchableOpacity
+                key={n.id}
+                style={styles.newsCard}
+                onPress={() => Linking.openURL(n.url)}
+              >
+                <Text style={styles.newsTitle} numberOfLines={2}>{n.title}</Text>
+                <View style={styles.newsMeta}>
+                  <Text style={styles.newsPublisher}>{n.publisher}</Text>
+                  <Text style={styles.newsDate}>
+                    {n.publishedAt.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' })}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Related Articles */}
         {articles.length > 0 && (
@@ -593,6 +769,19 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     marginTop: 4,
   },
+  valuationRow: {
+    flexDirection: 'row',
+    gap: Spacing.lg,
+    marginTop: 4,
+  },
+  valuation: {
+    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+  },
+  valuationValue: {
+    fontWeight: '700',
+    color: Colors.text,
+  },
   updated: {
     fontSize: FontSize.xs,
     color: Colors.textTertiary,
@@ -607,10 +796,86 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
     overflow: 'hidden',
   },
+  chartCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   cardTitle: {
     fontSize: FontSize.sm,
     fontWeight: '600',
     color: Colors.textSecondary,
+  },
+  commentModeBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    backgroundColor: Colors.surface,
+  },
+  commentModeBtnActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryMuted,
+  },
+  commentModeBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Colors.textTertiary,
+  },
+  commentModeBtnTextActive: {
+    color: Colors.primary,
+  },
+  commentArea: {
+    marginTop: Spacing.sm,
+    paddingTop: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: Colors.separator,
+    gap: Spacing.sm,
+  },
+  quickReactRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+  },
+  quickReactBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    paddingVertical: 6,
+  },
+  quickReactEmoji: {
+    fontSize: 20,
+  },
+  commentInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  commentInput: {
+    flex: 1,
+    height: 36,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    paddingHorizontal: Spacing.sm,
+    color: Colors.text,
+    fontSize: FontSize.sm,
+  },
+  commentSendBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.sm,
+  },
+  commentSendText: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: '#06090F',
   },
   rangeButtons: {
     flexDirection: 'row',
@@ -669,16 +934,16 @@ const styles = StyleSheet.create({
   },
   linkGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: Spacing.sm,
   },
   linkCard: {
+    flex: 1,
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.md,
-    padding: Spacing.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: 4,
     alignItems: 'center',
-    gap: 6,
-    width: '30%',
+    gap: 4,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
   },
@@ -958,6 +1223,76 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
   },
+  week52Wrap: { marginTop: 6 },
+  week52LabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  week52Label: { fontSize: FontSize.xs, color: Colors.textTertiary },
+  week52Track: {
+    height: 4,
+    backgroundColor: Colors.surface,
+    borderRadius: 2,
+    position: 'relative',
+  },
+  week52Dot: {
+    position: 'absolute',
+    top: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+    marginLeft: -5,
+  },
+  groupRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
+  groupChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    backgroundColor: Colors.card,
+  },
+  groupChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryMuted,
+  },
+  groupChipText: { fontSize: FontSize.sm, color: Colors.textSecondary, fontWeight: '600' },
+  groupChipTextActive: { color: Colors.primary },
+  groupChipNew: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    borderStyle: 'dashed',
+    backgroundColor: Colors.card,
+  },
+  groupChipNewText: { fontSize: FontSize.sm, color: Colors.textTertiary, fontWeight: '600' },
+  groupCurrent: {
+    marginTop: Spacing.sm,
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
+  },
+  newsCard: {
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
+    gap: 6,
+  },
+  newsTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.text,
+    lineHeight: 20,
+  },
+  newsMeta: { flexDirection: 'row', justifyContent: 'space-between' },
+  newsPublisher: { fontSize: FontSize.xs, color: Colors.primary },
+  newsDate: { fontSize: FontSize.xs, color: Colors.textTertiary },
   articleCard: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.md,

@@ -132,14 +132,37 @@ async function fetchWebText(url: string): Promise<string> {
   return stripHtml(await res.text());
 }
 
+// X (Twitter) oEmbed API — 認証不要・公開API
+// x.com は oEmbed で失敗するケースがあるため twitter.com に正規化して送る
+async function fetchXPostText(url: string): Promise<string> {
+  const normalized = url.replace('x.com/', 'twitter.com/');
+  const oembed = `https://publish.twitter.com/oembed?url=${encodeURIComponent(normalized)}&omit_script=1&lang=ja`;
+  const res = await fetch(oembed, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; KabuHub/1.0)' },
+  });
+  if (!res.ok) throw new XUrlError();
+  const json = await res.json();
+  // oEmbed の html フィールドからテキストを抽出、author_name も補足情報として追加
+  const bodyText = stripHtml(json.html ?? '');
+  if (!bodyText) throw new XUrlError();
+  return bodyText;
+}
+
 // ── OpenAI 抽出 ──────────────────────────────────────────────────────────────
 
 interface RawMention { name: string; code?: string; context: string; }
 
+// 有効な証券コード形式かどうか（4桁数字 / 3〜4桁数字+大文字1字）
+function isCodeLike(s: string): boolean {
+  return /^\d{4}$/.test(s) || /^\d{3,4}[A-Z]$/.test(s);
+}
+
 function extractCodesFromText(text: string): RawMention[] {
-  const matches = text.match(/\b\d{4}[A-Z]?\b/g) ?? [];
+  // \b は日本語境界で機能しないため lookahead/lookbehind で代替
+  // 3桁+大文字 (521A) と 4桁(数字のみ or +大文字) (7630, 268A) の両方を捕捉
+  const matches = text.match(/(?<![0-9A-Za-z])(?:\d{3,4}[A-Z]|\d{4})(?![0-9A-Za-z])/g) ?? [];
   return [...new Set(matches)]
-    .filter((m) => /^\d{4}$/.test(m) || /^\d{3}[A-Z]$/.test(m))
+    .filter(isCodeLike)
     .map((code) => ({ name: code, code, context: 'テキスト内のコード' }));
 }
 
@@ -158,21 +181,27 @@ async function extractWithAI(text: string): Promise<RawMention[]> {
         {
           role: 'system',
           content:
-            'あなたは日本株の銘柄情報を抽出するアシスタントです。与えられたテキストから言及されている日本株の企業名・証券コードを抽出してください。投資助言は行いません。',
+            'あなたは日本株の銘柄情報を抽出する専門アシスタントです。テキストから言及されている日本株の企業を全て特定し、東京証券取引所の証券コード（4桁）を必ず付与してください。コードが確実でない場合でも、最も可能性の高いコードを推定してください。投資助言は行いません。',
         },
         {
           role: 'user',
-          content: `以下のテキストから日本株の銘柄を抽出してください。証券コードが不明な場合はcodeを省略してください。
+          content: `以下のテキストから日本株の銘柄を全て抽出してください。
+
+【重要】
+- 企業名・ブランド名・略称など、日本株として上場している企業を全てリストアップ
+- 証券コードは必ず推定して付与（例: トヨタ→7203, ソニー→6758, 三菱UFJ→8306）
+- 外国株・未上場企業は除外
+- 同じ企業の重複は除く
 
 テキスト:
 ${text.slice(0, 4000)}
 
 返却形式（JSONのみ）:
-{"stocks":[{"name":"企業名","code":"証券コード（省略可）","context":"言及内容20字以内"}]}`,
+{"stocks":[{"name":"企業名（正式名称）","code":"証券コード4桁","context":"言及内容20字以内"}]}`,
         },
       ],
       response_format: { type: 'json_object' },
-      max_tokens: 800,
+      max_tokens: 1000,
       temperature: 0,
     }),
   });
@@ -205,8 +234,10 @@ export async function fetchStockCandidates(
 ): Promise<{ candidates: StockCandidate[]; sourceText: string }> {
   let text = input.trim();
 
-  // X/Twitter URL → 直接取得不可
-  if (isUrl(text) && isXUrl(text)) throw new XUrlError();
+  if (isUrl(text) && isXUrl(text)) {
+    onStage?.('ページを取得中...');
+    text = await fetchXPostText(text);
+  }
 
   if (isUrl(text) && isYouTubeUrl(text)) {
     onStage?.('字幕を取得中...');
@@ -237,11 +268,29 @@ export async function fetchStockCandidates(
     mentions.map(async (m): Promise<StockCandidate | null> => {
       let code = m.code;
       let name = m.name;
-      if (!code || code === name) {
-        const resolved = await StockDataService.searchByName(name).catch(() => null);
-        if (resolved) { code = resolved.code; name = resolved.fullName; }
+
+      // コードが未解決 or 名前と同じ（regex fallback）の場合はコード検索
+      if (!code || !isCodeLike(code)) {
+        // 1. ローカルインデックスから部分一致
+        const local = StockDataService.searchStockLocal(name);
+        if (local.length > 0) {
+          code = local[0].code;
+          name = local[0].name;
+        } else {
+          // 2. Yahoo Finance 検索（lang=ja）
+          const remote = await StockDataService.searchStockRemote(name).catch(() => []);
+          if (remote.length > 0) {
+            code = remote[0].code;
+            name = remote[0].name;
+          }
+        }
       }
-      if (!code) return null;
+      if (!code || !isCodeLike(code)) return null;
+
+      // 日本語名を確実に解決
+      const resolvedName = await StockDataService.resolveNameByCode(code).catch(() => null);
+      if (resolvedName) name = resolvedName;
+
       const quote = await StockDataService.fetchQuote(code).catch(() => null);
       return { name, code, context: m.context, price: quote?.price, changePercent: quote?.changePercent, source };
     }),

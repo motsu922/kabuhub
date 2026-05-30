@@ -1,16 +1,15 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ShareIntentProvider } from 'expo-share-intent';
 import { Colors } from '../src/constants/theme';
-import { NotificationService } from '../src/services/notificationService';
+import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
 
 export default function RootLayout() {
-  useEffect(() => {
-    NotificationService.requestPermissions();
-  }, []);
+  useEffect(() => { RemoteLinkConfig.init(); }, []);
 
   return (
-    <>
+    <ShareIntentProvider>
       <StatusBar style="light" />
       <Stack
         screenOptions={{
@@ -22,6 +21,6 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="stock/[code]" options={{ headerShown: false }} />
       </Stack>
-    </>
+    </ShareIntentProvider>
   );
 }

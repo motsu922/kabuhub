@@ -1,29 +1,33 @@
 export const Colors = {
-  background: '#0A0A0A',
-  surface: '#141414',
-  card: '#1C1C1E',
-  cardBorder: '#2C2C2E',
+  background: '#06090F',
+  surface: '#0B1120',
+  card: '#111E30',
+  cardBorder: '#1A2D45',
 
-  primary: '#00C853',       // green accent
-  primaryMuted: '#00C85320',
-  primaryDim: '#00C85380',
+  primary: '#F0B040',       // amber gold — brand accent
+  primaryMuted: '#F0B04018',
+  primaryDim: '#F0B04055',
 
-  text: '#FFFFFF',
-  textSecondary: '#8E8E93',
-  textTertiary: '#48484A',
+  text: '#EDF2FF',
+  textSecondary: '#7090B0',
+  textTertiary: '#354860',
 
-  // Status colors
-  statusNormal: '#00C853',  // 🟢 平常
-  statusWatch: '#FFD60A',   // 🟡 注目
-  statusAlert: '#FF9F0A',   // 🟠 要確認
-  statusSurge: '#FF3B30',   // 🔴 急変
+  statusNormal: '#22D47A',
+  statusWatch: '#F0B040',
+  statusAlert: '#F07040',
+  statusSurge: '#F0B040',
 
-  positive: '#00C853',      // up
-  negative: '#FF3B30',      // down
-  neutral: '#8E8E93',
+  positive: '#22D47A',
+  negative: '#F04060',
+  neutral: '#7090B0',
 
-  separator: '#2C2C2E',
-  overlay: 'rgba(0,0,0,0.6)',
+  // contextual signal colors
+  signalSurge:  '#F07040',  // hot orange-red — 急騰
+  signalDip:    '#40C0B0',  // teal — 押し目
+  signalTheme:  '#9060F0',  // purple — テーマ変化
+
+  separator: '#152030',
+  overlay: 'rgba(4,8,18,0.85)',
 } as const;
 
 export const Spacing = {

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { Stock, WatchlistItem, AlertSettings, WatchStyle, UserIntention } from '../types';
+import { Stock, WatchlistItem, AlertSettings, UserIntention } from '../types';
 import { StorageService } from '../services/storage';
 import { StockDataService } from '../services/stockData';
 import { NotificationService } from '../services/notificationService';
 import { detectSignals } from '../services/technicalAnalysis';
 import { MOCK_STOCKS } from '../constants/mockData';
+import { isUSCode } from '../services/stockData';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -14,7 +15,7 @@ function buildBaseStock(code: string): Stock {
   if (mock) return mock;
   // モックにない銘柄のデフォルト値
   return {
-    id: code, code, name: code, market: 'JP',
+    id: code, code, name: code, market: isUSCode(code) ? 'US' : 'JP',
     price: 0, previousClose: 0, change: 0, changePercent: 0,
     volume: 0, status: 'normal', updatedAt: new Date(),
     priceHistory: [],
@@ -37,14 +38,20 @@ export function useWatchlist() {
       const codes = watchlistItems.map((i) => i.stockCode);
       if (!codes.length) { setStocks([]); return; }
 
-      // ベース情報（名前・テーマ等）。非モック銘柄は社名を API で解決
+      // ベース情報（名前・テーマ等）。非モック銘柄は社名・テーマを API で解決
       const baseStocks = await Promise.all(codes.map(async (code) => {
         const base = buildBaseStock(code);
-        if (base.name === base.code) {
-          const resolved = await StockDataService.resolveNameByCode(code).catch(() => null);
-          if (resolved) return { ...base, name: resolved };
-        }
-        return base;
+        const needsName   = base.name === base.code;
+        const needsThemes = !base.themes || base.themes.length === 0;
+        const [resolved, themes] = await Promise.all([
+          needsName   ? StockDataService.resolveNameByCode(code).catch(() => null) : Promise.resolve(null),
+          needsThemes ? StockDataService.fetchThemes(code).catch(() => [])         : Promise.resolve(base.themes ?? []),
+        ]);
+        return {
+          ...base,
+          ...(resolved ? { name: resolved } : {}),
+          themes: themes.length > 0 ? themes : (base.themes ?? []),
+        };
       }));
 
       // Yahoo Finance 一括取得（1リクエストで全銘柄）
@@ -124,15 +131,15 @@ export function useWatchlist() {
     await load();
   }, [load]);
 
-  const updateWatchStyle = useCallback(async (code: string, style: WatchStyle) => {
-    await StorageService.updateWatchStyle(code, style);
-    await load();
-  }, [load]);
-
   const updateIntention = useCallback(async (code: string, intention: UserIntention) => {
     await StorageService.updateIntention(code, intention);
     await load();
   }, [load]);
 
-  return { stocks, items, isLoading, lastUpdatedAt, addStock, removeStock, isInWatchlist, getItem, updateAlertSettings, updateWatchStyle, updateIntention, refresh: load };
+  const updateGroup = useCallback(async (code: string, group: string | null) => {
+    await StorageService.updateGroup(code, group);
+    await load();
+  }, [load]);
+
+  return { stocks, items, isLoading, lastUpdatedAt, addStock, removeStock, isInWatchlist, getItem, updateAlertSettings, updateIntention, updateGroup, refresh: load };
 }

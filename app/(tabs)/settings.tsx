@@ -9,23 +9,18 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { StorageService } from '../../src/services/storage';
 import { SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { UserSettings, SecuritiesApp } from '../../src/types';
 
-const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string }[] = [
-  { key: 'sbi',     name: 'SBI証券' },
-  { key: 'rakuten', name: '楽天証券' },
-  { key: 'ispeed',  name: 'iSPEED（楽天）' },
-  { key: 'moomoo',  name: 'moomoo' },
-  { key: 'matsui',  name: '松井証券' },
-  { key: 'monex',   name: 'マネックス証券' },
+const BUILD_TIMESTAMP = '2026-05-28 00:00';
+
+const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string; desc: string }[] = [
+  { key: 'ispeed', name: 'iSPEED', desc: '楽天証券' },
 ];
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const [settings, setSettings] = useState<UserSettings>({
     securitiesApp: null,
     notificationsEnabled: true,
@@ -61,82 +56,74 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>設定</Text>
 
         {/* 証券アプリ */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>証券アプリ</Text>
-          <Text style={styles.sectionDesc}>
-            ワンタップで起動する証券アプリを選択してください
-          </Text>
+        <SectionHeader title="証券アプリ" />
+        <Text style={styles.sectionDesc}>ワンタップで起動する証券アプリを選択</Text>
 
-          <View style={styles.optionList}>
-            {SECURITIES_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.key}
-                style={[
-                  styles.option,
-                  settings.securitiesApp === opt.key && styles.optionSelected,
-                ]}
-                onPress={() =>
-                  updateApp(settings.securitiesApp === opt.key ? null : opt.key)
-                }
-              >
-                <Text
-                  style={[
-                    styles.optionText,
-                    settings.securitiesApp === opt.key && styles.optionTextSelected,
-                  ]}
-                >
+        <View style={styles.card}>
+          {SECURITIES_OPTIONS.map((opt, i) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={[
+                styles.row,
+                i < SECURITIES_OPTIONS.length - 1 && styles.rowBorder,
+                settings.securitiesApp === opt.key && styles.rowSelected,
+              ]}
+              onPress={() => updateApp(settings.securitiesApp === opt.key ? null : opt.key)}
+            >
+              <View style={styles.rowLeft}>
+                <Text style={[styles.rowTitle, settings.securitiesApp === opt.key && styles.rowTitleSelected]}>
                   {opt.name}
                 </Text>
-                {settings.securitiesApp === opt.key && (
-                  <Text style={styles.checkmark}>✓</Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {settings.securitiesApp && (
-            <TouchableOpacity style={styles.testButton} onPress={testOpenApp}>
-              <Text style={styles.testButtonText}>
-                {SecuritiesAppLinks[settings.securitiesApp].name}を開く
-              </Text>
+                <Text style={styles.rowDesc}>{opt.desc}</Text>
+              </View>
+              {settings.securitiesApp === opt.key && (
+                <View style={styles.checkBadge}>
+                  <Text style={styles.checkText}>✓</Text>
+                </View>
+              )}
             </TouchableOpacity>
-          )}
+          ))}
         </View>
 
-        {/* テクニカル分析 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>テクニカル分析</Text>
-          <TouchableOpacity
-            style={styles.navRow}
-            onPress={() => router.push('/backtest')}
-          >
-            <Text style={styles.navRowText}>📊 バックテスト（シグナル信頼性検証）</Text>
-            <Text style={styles.navRowArrow}>›</Text>
+        {settings.securitiesApp && (
+          <TouchableOpacity style={styles.actionBtn} onPress={testOpenApp}>
+            <Text style={styles.actionBtnText}>
+              {SecuritiesAppLinks[settings.securitiesApp].name} を開く
+            </Text>
           </TouchableOpacity>
-        </View>
+        )}
 
         {/* 免責事項 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>免責事項</Text>
-          <View style={styles.disclaimer}>
-            <Text style={styles.disclaimerText}>
-              本アプリは投資判断の参考情報を整理するためのツールです。{'\n'}
-              特定の金融商品の売買を推奨するものではありません。{'\n'}
-              投資判断は利用者自身の責任で行ってください。
-            </Text>
-          </View>
+        <View style={styles.spacer} />
+        <SectionHeader title="免責事項" />
+        <View style={styles.disclaimerCard}>
+          <Text style={styles.disclaimerText}>
+            本アプリは投資判断の参考情報を整理するためのツールです。{'\n'}
+            特定の金融商品の売買を推奨するものではありません。{'\n'}
+            投資判断は利用者自身の責任で行ってください。
+          </Text>
         </View>
 
         {/* バージョン */}
-        <View style={styles.section}>
-          <Text style={styles.versionText}>KabuHub v1.0.0 MVP</Text>
+        <View style={styles.versionRow}>
+          <Text style={styles.versionLabel}>KabuHub v1.0.0</Text>
+          <Text style={styles.versionText}>{BUILD_TIMESTAMP}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionAccent} />
+      <Text style={styles.sectionTitle}>{title}</Text>
+    </View>
   );
 }
 
@@ -150,96 +137,115 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: Spacing.lg,
   },
-  section: {
-    marginBottom: Spacing.xl,
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  sectionAccent: {
+    width: 3,
+    height: 14,
+    borderRadius: 2,
+    backgroundColor: Colors.primary,
   },
   sectionTitle: {
-    fontSize: FontSize.lg,
+    fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.text,
-    marginBottom: Spacing.xs,
   },
   sectionDesc: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
+    paddingLeft: Spacing.sm + 3,
   },
-  optionList: {
+  spacer: { height: Spacing.xl },
+  card: {
     backgroundColor: Colors.card,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.cardBorder,
     overflow: 'hidden',
+    marginBottom: Spacing.sm,
   },
-  option: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     padding: Spacing.md,
+  },
+  rowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: Colors.separator,
   },
-  optionSelected: {
+  rowSelected: {
     backgroundColor: Colors.primaryMuted,
   },
-  optionText: {
+  rowLeft: { gap: 2 },
+  rowTitle: {
     fontSize: FontSize.md,
+    fontWeight: '600',
     color: Colors.text,
   },
-  optionTextSelected: {
-    color: Colors.primary,
-    fontWeight: '600',
+  rowTitleSelected: { color: Colors.primary },
+  rowDesc: {
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
   },
-  checkmark: {
-    fontSize: FontSize.md,
-    color: Colors.primary,
-    fontWeight: '700',
+  checkBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  testButton: {
-    marginTop: Spacing.md,
+  checkText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#06090F',
+  },
+  actionBtn: {
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     alignItems: 'center',
+    marginBottom: Spacing.sm,
   },
-  testButtonText: {
+  actionBtnText: {
     fontSize: FontSize.md,
     fontWeight: '700',
-    color: '#000',
+    color: '#06090F',
   },
-  disclaimer: {
+  disclaimerCard: {
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
-    borderLeftWidth: 3,
+    borderLeftWidth: 2,
     borderLeftColor: Colors.textTertiary,
+    borderWidth: 1,
+    borderColor: Colors.cardBorder,
   },
   disclaimerText: {
     fontSize: FontSize.sm,
     color: Colors.textSecondary,
     lineHeight: 22,
   },
-  versionText: {
-    fontSize: FontSize.sm,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-  },
-  navRow: {
+  versionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    borderColor: Colors.cardBorder,
-    padding: Spacing.md,
+    marginTop: Spacing.xl,
+    paddingHorizontal: Spacing.xs,
   },
-  navRowText: {
-    fontSize: FontSize.md,
-    color: Colors.text,
+  versionLabel: {
+    fontSize: FontSize.sm,
+    color: Colors.textTertiary,
+    fontWeight: '600',
   },
-  navRowArrow: {
-    fontSize: FontSize.xl,
+  versionText: {
+    fontSize: FontSize.sm,
     color: Colors.textTertiary,
   },
 });

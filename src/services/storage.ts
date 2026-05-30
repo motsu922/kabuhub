@@ -29,10 +29,8 @@ export const StorageService = {
       alertSettings: {
         dip: true,
         surge: true,
-        plunge: true,
         volume: true,
         highApproach: false,
-        lowApproach: false,
         themeChange: true,
         consecutiveDecline: true,
       },
@@ -63,13 +61,11 @@ export const StorageService = {
     }
   },
 
-  async updateWatchStyle(stockCode: string, style: import('../types').WatchStyle): Promise<void> {
-    const { WATCH_PRESETS } = await import('../constants/watchPresets');
+  async updateGroup(stockCode: string, group: string | null): Promise<void> {
     const items = await StorageService.getWatchlist();
     const idx = items.findIndex((i) => i.stockCode === stockCode);
     if (idx >= 0) {
-      items[idx].watchStyle    = style;
-      items[idx].alertSettings = WATCH_PRESETS[style].settings;
+      if (group) { items[idx].group = group; } else { delete items[idx].group; }
       await StorageService.saveWatchlist(items);
     }
   },

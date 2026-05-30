@@ -33,6 +33,16 @@ export interface Stock {
   themes?: string[];
   memo?: string;
   technicalSignals?: TechnicalSignal[];
+  week52High?: number;
+  week52Low?: number;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  url: string;
+  publisher: string;
+  publishedAt: Date;
 }
 
 export interface Article {
@@ -46,7 +56,6 @@ export interface Article {
   isProcessed: boolean;
 }
 
-export type WatchStyle = 'buy' | 'sell';
 export type UserIntention = 'buy' | 'sell' | 'neutral';
 
 export interface WatchlistItem {
@@ -54,28 +63,28 @@ export interface WatchlistItem {
   addedAt: Date;
   memo?: string;
   intention?: UserIntention;
-  watchStyle?: WatchStyle;
   alertSettings?: AlertSettings;
+  group?: string;
 }
 
 export interface AlertSettings {
   dip: boolean;
   surge: boolean;
-  plunge: boolean;
   volume: boolean;
   highApproach: boolean;
-  lowApproach: boolean;
   themeChange: boolean;
   consecutiveDecline: boolean; // 続落
 }
 
-export type SecuritiesApp =
-  | 'sbi'
-  | 'rakuten'
-  | 'ispeed'
-  | 'moomoo'
-  | 'matsui'
-  | 'monex';
+export interface MarketIndex {
+  id: string;
+  name: string;
+  value: number;
+  change: number;
+  changePercent: number;
+}
+
+export type SecuritiesApp = 'ispeed';
 
 export interface UserSettings {
   securitiesApp: SecuritiesApp | null;
@@ -95,7 +104,7 @@ export interface Notification {
   id: string;
   stockCode: string;
   stockName: string;
-  type: 'dip' | 'surge' | 'plunge' | 'volume' | 'highApproach' | 'lowApproach' | 'themeChange';
+  type: 'dip' | 'surge' | 'volume' | 'highApproach' | 'themeChange';
   message: string;
   createdAt: Date;
   isRead: boolean;

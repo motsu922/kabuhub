@@ -1,4 +1,11 @@
-import { Stock, Article, Notification } from '../types';
+import { Stock, Article, Notification, MarketIndex } from '../types';
+
+export const MOCK_MARKET_INDICES: MarketIndex[] = [
+  { id: 'nikkei', name: '日経225', value: 38420.50, change: 312.80, changePercent: 0.82 },
+  { id: 'topix', name: 'TOPIX', value: 2712.34, change: -8.45, changePercent: -0.31 },
+  { id: 'dow', name: 'NYダウ', value: 42150.75, change: 185.30, changePercent: 0.44 },
+  { id: 'nasdaq', name: 'NASDAQ', value: 18320.40, change: -92.10, changePercent: -0.50 },
+];
 
 export const MOCK_STOCKS: Stock[] = [
   {
