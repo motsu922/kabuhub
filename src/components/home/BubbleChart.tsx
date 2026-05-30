@@ -262,29 +262,45 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
               ))}
 
               {/* Bubbles */}
-              {bubbles.map(b => (
-                <TouchableOpacity
-                  key={b.stock.code}
-                  style={[s.bubble, {
-                    left: b.x - b.r,
-                    top:  b.y - b.r,
-                    width:  b.r * 2,
-                    height: b.r * 2,
-                    borderRadius: b.r,
-                    backgroundColor: b.color + (selectedCode === b.stock.code ? '44' : '22'),
-                    borderColor:     b.color + (selectedCode === b.stock.code ? 'FF' : '99'),
-                    borderWidth: selectedCode === b.stock.code ? 2 : 1.5,
-                  }]}
-                  onPress={() => setSelected(selectedCode === b.stock.code ? null : b.stock.code)}
-                  activeOpacity={0.75}
-                >
-                  {b.r >= 16 && (
-                    <Text style={[s.bubbleLbl, { color: b.color, fontSize: b.r >= 22 ? 9 : 7 }]}>
-                      {b.stock.code}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              ))}
+              {bubbles.map(b => {
+                const isSelected = selectedCode === b.stock.code;
+                const nameInside = b.stock.name.slice(0, b.r >= 26 ? 6 : b.r >= 20 ? 4 : 3);
+                const showInside = b.r >= 18;
+                const extTop     = Math.min(b.y + b.r + 2, L.chartH - 10);
+                return (
+                  <React.Fragment key={b.stock.code}>
+                    <TouchableOpacity
+                      style={[s.bubble, {
+                        left: b.x - b.r,
+                        top:  b.y - b.r,
+                        width:  b.r * 2,
+                        height: b.r * 2,
+                        borderRadius: b.r,
+                        backgroundColor: b.color + (isSelected ? '44' : '22'),
+                        borderColor:     b.color + (isSelected ? 'FF' : '99'),
+                        borderWidth: isSelected ? 2 : 1.5,
+                      }]}
+                      onPress={() => setSelected(isSelected ? null : b.stock.code)}
+                      activeOpacity={0.75}
+                    >
+                      {showInside && (
+                        <Text style={[s.bubbleLbl, { color: b.color, fontSize: b.r >= 24 ? 9 : 7 }]} numberOfLines={1}>
+                          {nameInside}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                    {!showInside && (
+                      <Text
+                        style={[s.bubbleExtLbl, { color: b.color, left: b.x - 28, top: extTop }]}
+                        numberOfLines={1}
+                        pointerEvents="none"
+                      >
+                        {b.stock.name.length > 6 ? b.stock.name.slice(0, 6) : b.stock.name}
+                      </Text>
+                    )}
+                  </React.Fragment>
+                );
+              })}
 
             </View>
           </ScrollView>
@@ -484,6 +500,13 @@ function createStyles(c: ColorPalette) {
       alignItems: 'center',
     },
     bubbleLbl: { textAlign: 'center', fontWeight: '700' },
+    bubbleExtLbl: {
+      position: 'absolute',
+      width: 56,
+      textAlign: 'center',
+      fontSize: 7,
+      fontWeight: '600',
+    },
     empty: { height: 100, justifyContent: 'center', alignItems: 'center' },
     emptyTxt: { fontSize: FontSize.sm, color: c.textTertiary },
     detail: {

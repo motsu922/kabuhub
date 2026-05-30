@@ -1,13 +1,17 @@
-import React, { useRef, useCallback } from 'react';
-import { Animated, View, Text, TouchableOpacity, PanResponder, StyleSheet } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet,
+  LayoutAnimation, Platform, UIManager,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Stock, UserIntention } from '../../types';
-import { BorderRadius } from '../../constants/theme';
+import { BorderRadius, ColorPalette } from '../../constants/theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { StockCard } from './StockCard';
 
-const BTN_W     = 56;
-const ACTIONS_W = BTN_W * 4; // 224px
-const THRESHOLD = 56;         // px to trigger open
+if (Platform.OS === 'android') {
+  UIManager.setLayoutAnimationEnabledExperimental?.(true);
+}
 
 interface Props {
   stock: Stock;
@@ -18,101 +22,110 @@ interface Props {
 
 export function SwipeableStockCard({ stock, intention, onPress, onIntentionChange }: Props) {
   const { colors } = useTheme();
-  const translateX = useRef(new Animated.Value(0)).current;
-  const isOpen     = useRef(false);
-  const startX     = useRef(0);
+  const [open, setOpen] = useState(false);
 
-  const ACTIONS: { intention: UserIntention; label: string; color: string }[] = [
-    { intention: 'buy',     label: '買いたい', color: colors.primary  },
-    { intention: 'hold',    label: '持ってる', color: colors.positive },
-    { intention: 'sell',    label: '売りたい', color: colors.negative },
+  const ACTIONS = useMemo<{ intention: UserIntention; label: string; color: string }[]>(() => [
+    { intention: 'buy',     label: '買いたい', color: colors.primary       },
+    { intention: 'hold',    label: '持ってる', color: colors.positive      },
+    { intention: 'sell',    label: '売りたい', color: colors.negative      },
     { intention: 'neutral', label: '中立',     color: colors.textSecondary },
-  ];
+  ], [colors]);
 
-  const snapTo = useCallback((toValue: number, open: boolean) => {
-    isOpen.current = open;
-    Animated.spring(translateX, {
-      toValue, useNativeDriver: true, bounciness: 0, speed: 30,
-    }).start();
-  }, [translateX]);
+  const toggle = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen(v => !v);
+  }, []);
 
-  const panResponder = useRef(PanResponder.create({
-    onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-      Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8,
-    onPanResponderGrant: () => {
-      startX.current = isOpen.current ? -ACTIONS_W : 0;
-      translateX.stopAnimation();
-    },
-    onPanResponderMove: (_, { dx }) => {
-      translateX.setValue(Math.max(-ACTIONS_W, Math.min(0, startX.current + dx)));
-    },
-    onPanResponderRelease: (_, { dx }) => {
-      const net = startX.current + dx;
-      if (isOpen.current) {
-        net > -ACTIONS_W / 2 ? snapTo(0, false) : snapTo(-ACTIONS_W, true);
-      } else {
-        net < -THRESHOLD ? snapTo(-ACTIONS_W, true) : snapTo(0, false);
-      }
-    },
-  })).current;
-
-  const handleSet = (newIntention: UserIntention) => {
-    snapTo(0, false);
+  const handleSet = useCallback((newIntention: UserIntention) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpen(false);
     onIntentionChange(stock.code, newIntention);
-  };
+  }, [stock.code, onIntentionChange]);
 
   return (
-    <View style={styles.container}>
-      {/* Action buttons revealed by swipe */}
-      <View style={styles.actions}>
-        {ACTIONS.map(a => (
-          <TouchableOpacity
-            key={a.intention}
-            style={[styles.btn, { backgroundColor: a.color + (intention === a.intention ? 'FF' : 'CC') }]}
-            onPress={() => handleSet(a.intention)}
-            activeOpacity={0.85}
-          >
-            {intention === a.intention && <Text style={styles.check}>✓</Text>}
-            <Text style={styles.btnLabel}>{a.label}</Text>
-          </TouchableOpacity>
-        ))}
+    <View style={styles.wrapper}>
+      {/* Card row */}
+      <View style={styles.cardRow}>
+        <View style={{ flex: 1 }}>
+          <StockCard
+            stock={stock}
+            intention={intention}
+            onPress={open ? toggle : onPress}
+          />
+        </View>
+        <TouchableOpacity
+          style={[styles.toggleBtn, { backgroundColor: open ? colors.primary + '22' : colors.surface, borderColor: open ? colors.primary + '55' : colors.cardBorder }]}
+          onPress={toggle}
+          hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons
+            name={open ? 'chevron-forward-outline' : 'chevron-back-outline'}
+            size={15}
+            color={open ? colors.primary : colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Sliding card */}
-      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
-        <StockCard
-          stock={stock}
-          intention={intention}
-          onPress={() => {
-            if (isOpen.current) snapTo(0, false);
-            else onPress();
-          }}
-        />
-      </Animated.View>
+      {/* Stance buttons - visible when open */}
+      {open && (
+        <View style={[styles.actions, { backgroundColor: colors.surface }]}>
+          {ACTIONS.map(a => (
+            <TouchableOpacity
+              key={a.intention}
+              style={[
+                styles.btn,
+                {
+                  backgroundColor: a.color + (intention === a.intention ? '30' : '12'),
+                  borderColor:     a.color + (intention === a.intention ? 'CC' : '40'),
+                },
+              ]}
+              onPress={() => handleSet(a.intention)}
+              activeOpacity={0.75}
+            >
+              {intention === a.intention && (
+                <Ionicons name="checkmark" size={10} color={a.color} />
+              )}
+              <Text style={[styles.btnLabel, { color: a.color }]}>{a.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    overflow: 'hidden',
-    borderRadius: BorderRadius.sm,
+  wrapper: {
     marginBottom: 5,
   },
-  actions: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: ACTIONS_W,
+  cardRow: {
     flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 4,
   },
-  btn: {
-    width: BTN_W,
+  toggleBtn: {
+    width: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 3,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
   },
-  check: { fontSize: 12, color: '#fff', fontWeight: '800' },
-  btnLabel: { fontSize: 10, color: '#fff', fontWeight: '700', textAlign: 'center', lineHeight: 13 },
+  actions: {
+    flexDirection: 'row',
+    height: 46,
+    gap: 4,
+    padding: 4,
+    marginTop: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  btn: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 2,
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+  },
+  btnLabel: { fontSize: 10, fontWeight: '700', textAlign: 'center' },
 });
