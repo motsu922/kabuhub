@@ -62,11 +62,15 @@ export function useWatchlist() {
         const history = historyArr[i];
         const ohlc    = ohlcArr[i];
         const technicalSignals = ohlc.length >= 30 ? detectSignals(ohlc) : [];
+        const avgVolume20d = ohlc.length >= 5
+          ? ohlc.slice(-Math.min(ohlc.length, 20)).reduce((sum, b) => sum + b.volume, 0) / Math.min(ohlc.length, 20)
+          : undefined;
         return {
           ...s,
           ...(quote ?? {}),
           priceHistory: history.length ? history : s.priceHistory,
           technicalSignals,
+          avgVolume20d,
         };
       });
 

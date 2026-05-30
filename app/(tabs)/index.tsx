@@ -13,9 +13,8 @@ import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constan
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { StockCard } from '../../src/components/watchlist/StockCard';
 import { SkeletonCard } from '../../src/components/common/SkeletonCard';
-import { DailyBriefingCard } from '../../src/components/home/DailyBriefingCard';
+import { BubbleChart } from '../../src/components/home/BubbleChart';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
-import { useDailyBriefing } from '../../src/hooks/useDailyBriefing';
 import { Stock, Notification, WatchlistItem } from '../../src/types';
 
 function consecutiveDeclineDays(closes: number[]): number {
@@ -76,7 +75,6 @@ export default function HomeScreen() {
   const { stocks, items, isLoading, lastUpdatedAt, getItem, refresh } = useWatchlist();
 
   const notifications = generateNotifications(stocks, items);
-  const { lines: briefingLines, isLoading: briefingLoading, error: briefingError, generatedAt, refresh: refreshBriefing } = useDailyBriefing(stocks, items);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
@@ -137,16 +135,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {(briefingLines.length > 0 || briefingLoading) && (
-          <Section title="今日の3行ニュース" colors={colors}>
-            <DailyBriefingCard
-              lines={briefingLines}
-              isLoading={briefingLoading}
-              error={briefingError}
-              generatedAt={generatedAt}
-              onRefresh={refreshBriefing}
-            />
-          </Section>
+        {stocks.length > 0 && (
+          <BubbleChart
+            stocks={stocks}
+            items={items}
+            colors={colors}
+            onPressStock={(code) => router.push(`/stock/${code}`)}
+          />
         )}
 
         {notifications.length > 0 && (

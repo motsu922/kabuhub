@@ -34,6 +34,7 @@ export interface Stock {
   technicalSignals?: TechnicalSignal[];
   week52High?: number;
   week52Low?: number;
+  avgVolume20d?: number;
 }
 
 export interface NewsItem {
