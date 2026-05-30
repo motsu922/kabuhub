@@ -174,11 +174,10 @@ const SITUATION_CONFIG: Record<
   highApproach: { label: '大幅上昇',   colorKey: 'primary',      icon: '◈' },
   dip:          { label: '押し目候補', colorKey: 'signalDip',    icon: '◎' },
   volume:       { label: '出来高急増', colorKey: 'statusAlert',  icon: '◇' },
-  themeChange:  { label: 'テーマ変化', colorKey: 'signalTheme',  icon: '✦' },
 };
 
 const SITUATION_ORDER: Notification['type'][] = [
-  'surge', 'highApproach', 'dip', 'volume', 'themeChange',
+  'surge', 'highApproach', 'dip', 'volume',
 ];
 
 interface SituationGroup { type: Notification['type']; notifications: Notification[]; }

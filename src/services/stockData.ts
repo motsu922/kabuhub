@@ -47,107 +47,6 @@ const searchCache = new Map<string, Stock[]>();
 const nameCache = new Map<string, string>();
 // リモートで発見済みの銘柄プール（コード → Stock）: ローカル部分一致に使い回す
 const stockPool = new Map<string, Stock>();
-// テーマキャッシュ（コード → string[]）
-const themesCache = new Map<string, string[]>();
-
-// Yahoo Finance industry → 日本語テーマタグ
-const INDUSTRY_THEMES: Record<string, string[]> = {
-  'Semiconductor Equipment & Materials': ['半導体製造装置', '半導体'],
-  'Semiconductors':                       ['半導体'],
-  'Electronic Components':               ['電子部品'],
-  'Electronics & Computer Distribution': ['電子部品', 'IT'],
-  'Software—Application':                ['ソフトウェア', 'IT'],
-  'Software—Infrastructure':             ['ソフトウェア', 'IT'],
-  'Information Technology Services':     ['IT', 'DX'],
-  'Internet Content & Information':      ['インターネット', 'IT'],
-  'Computer Hardware':                   ['ハードウェア', 'IT'],
-  'Consumer Electronics':                ['家電', '電子機器'],
-  'Scientific & Technical Instruments':  ['精密機器'],
-  'Auto Manufacturers':                  ['自動車'],
-  'Auto Parts':                          ['自動車部品', '自動車'],
-  'Auto & Truck Dealerships':            ['自動車'],
-  'Banks—Regional':                      ['地銀', '銀行'],
-  'Banks—Diversified':                   ['銀行', 'メガバンク'],
-  'Insurance—Life':                      ['保険', '金融'],
-  'Insurance—Diversified':               ['保険', '金融'],
-  'Insurance—Property & Casualty':       ['保険', '金融'],
-  'Capital Markets':                     ['証券', '金融'],
-  'Asset Management':                    ['資産運用', '金融'],
-  'Credit Services':                     ['金融', 'フィンテック'],
-  'Drug Manufacturers—General':          ['医薬品'],
-  'Drug Manufacturers—Specialty & Generic': ['医薬品', 'ジェネリック'],
-  'Biotechnology':                       ['バイオ', '医薬品'],
-  'Medical Instruments & Supplies':      ['医療機器'],
-  'Medical Devices':                     ['医療機器', 'ヘルスケア'],
-  'Healthcare Plans':                    ['医療', 'ヘルスケア'],
-  'Aerospace & Defense':                 ['防衛', '航空宇宙'],
-  'Industrial Machinery':                ['産業機械'],
-  'Specialty Industrial Machinery':      ['産業機械', '製造'],
-  'Farm & Heavy Construction Machinery': ['建設機械'],
-  'Tools & Accessories':                 ['工具・機器'],
-  'Electrical Equipment & Parts':        ['電気機器'],
-  'Conglomerates':                       ['総合電機', '多角経営'],
-  'Railroads':                           ['鉄道', 'インフラ'],
-  'Airlines':                            ['航空', '旅行'],
-  'Trucking':                            ['物流', '輸送'],
-  'Shipping & Ports':                    ['海運', '物流'],
-  'Integrated Freight & Logistics':      ['物流'],
-  'Steel':                               ['鉄鋼', '素材'],
-  'Aluminum':                            ['非鉄金属', '素材'],
-  'Copper':                              ['非鉄金属', '素材'],
-  'Other Industrial Metals & Mining':    ['素材', '資源'],
-  'Chemicals':                           ['化学'],
-  'Specialty Chemicals':                 ['特殊化学', '化学'],
-  'Agricultural Inputs':                 ['農業', '化学'],
-  'Oil & Gas E&P':                       ['石油・ガス', 'エネルギー'],
-  'Oil & Gas Integrated':                ['石油・ガス', 'エネルギー'],
-  'Oil & Gas Refining & Marketing':      ['石油・ガス', 'エネルギー'],
-  'Utilities—Regulated Electric':        ['電力', '公益事業'],
-  'Utilities—Regulated Gas':             ['ガス', '公益事業'],
-  'Utilities—Renewable':                 ['再生可能エネルギー', '脱炭素'],
-  'Telecom Services':                    ['通信'],
-  'Wireless Telecom Services':           ['通信', '5G'],
-  'Electronic Gaming & Multimedia':      ['ゲーム', 'エンタメ'],
-  'Entertainment':                       ['エンタメ', 'コンテンツ'],
-  'Publishing':                          ['出版', 'メディア'],
-  'Broadcasting':                        ['放送', 'メディア'],
-  'Advertising Agencies':                ['広告', 'メディア'],
-  'Lodging':                             ['ホテル', '旅行'],
-  'Resorts & Casinos':                   ['レジャー', '旅行'],
-  'Restaurants':                         ['外食', '飲食'],
-  'Retail—Cyclical':                     ['小売'],
-  'Retail—Defensive':                    ['小売', '生活必需品'],
-  'Department Stores':                   ['百貨店', '小売'],
-  'Grocery Stores':                      ['食品スーパー', '小売'],
-  'Food Distribution':                   ['食品', '物流'],
-  'Packaged Foods':                      ['食品', '加工食品'],
-  'Beverages—Non-Alcoholic':             ['飲料', '食品'],
-  'Beverages—Alcoholic':                 ['飲料', 'アルコール'],
-  'Real Estate—Development':             ['不動産', '住宅'],
-  'Real Estate—Diversified':             ['不動産'],
-  'Real Estate Services':                ['不動産'],
-  'Staffing & Employment Services':      ['人材', 'HR'],
-  'Consulting Services':                 ['コンサルティング', 'DX'],
-  'Waste Management':                    ['環境', '廃棄物処理'],
-  'Paper & Paper Products':              ['紙・パルプ', '素材'],
-  'Lumber & Wood Production':            ['木材', '素材'],
-  'Building Materials':                  ['建材', '住宅'],
-  'Engineering & Construction':          ['建設', 'インフラ'],
-};
-
-const SECTOR_THEMES: Record<string, string> = {
-  'Technology':             'テクノロジー',
-  'Financial Services':     '金融',
-  'Healthcare':             'ヘルスケア',
-  'Consumer Cyclical':      '消費財',
-  'Industrials':            '産業',
-  'Basic Materials':        '素材',
-  'Communication Services': '通信',
-  'Energy':                 'エネルギー',
-  'Real Estate':            '不動産',
-  'Consumer Defensive':     '生活必需品',
-  'Utilities':              '公益事業',
-};
 
 function addToPool(stock: Stock) {
   nameCache.set(stock.code, stock.name);
@@ -484,34 +383,6 @@ export const StockDataService = {
     return map;
   },
 
-  // 銘柄コードからテーマタグを自動取得（Yahoo Finance assetProfile）
-  async fetchThemes(code: string): Promise<string[]> {
-    if (themesCache.has(code)) return themesCache.get(code)!;
-    try {
-      const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${toTicker(code)}?modules=assetProfile`;
-      const res = await fetch(url, { headers: HEADERS });
-      if (!res.ok) return [];
-      const json = await res.json();
-      const profile = json?.quoteSummary?.result?.[0]?.assetProfile;
-      if (!profile) return [];
-
-      const industry: string = profile.industry ?? '';
-      const sector:   string = profile.sector   ?? '';
-      const themes: string[] = [];
-
-      const industryThemes = INDUSTRY_THEMES[industry];
-      if (industryThemes) themes.push(...industryThemes);
-
-      const sectorTheme = SECTOR_THEMES[sector];
-      if (sectorTheme && !themes.includes(sectorTheme)) themes.push(sectorTheme);
-
-      themesCache.set(code, themes);
-      return themes;
-    } catch {
-      return [];
-    }
-  },
-
   async fetchOHLCLong(code: string): Promise<OHLCBar[]> {
     try {
       const url = `https://query1.finance.yahoo.com/v8/finance/chart/${toTicker(code)}?interval=1d&range=2y&includePrePost=false&_=${Date.now()}`;
@@ -596,20 +467,6 @@ export const StockDataService = {
     } catch {
       return [];
     }
-  },
-
-  getRelatedByTheme(code: string, themes: string[], limit = 3): Stock[] {
-    if (!themes.length) return [];
-    return MOCK_STOCKS
-      .filter((s) => s.code !== code && s.themes?.length)
-      .map((s) => ({
-        stock: s,
-        score: (s.themes ?? []).filter((t) => themes.includes(t)).length,
-      }))
-      .filter(({ score }) => score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit)
-      .map(({ stock }) => stock);
   },
 
   formatPrice(price: number): string {

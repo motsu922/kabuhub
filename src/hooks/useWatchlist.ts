@@ -38,20 +38,14 @@ export function useWatchlist() {
       const codes = watchlistItems.map((i) => i.stockCode);
       if (!codes.length) { setStocks([]); return; }
 
-      // ベース情報（名前・テーマ等）。非モック銘柄は社名・テーマを API で解決
+      // ベース情報（名前）。非モック銘柄は社名を API で解決
       const baseStocks = await Promise.all(codes.map(async (code) => {
         const base = buildBaseStock(code);
-        const needsName   = base.name === base.code;
-        const needsThemes = !base.themes || base.themes.length === 0;
-        const [resolved, themes] = await Promise.all([
-          needsName   ? StockDataService.resolveNameByCode(code).catch(() => null) : Promise.resolve(null),
-          needsThemes ? StockDataService.fetchThemes(code).catch(() => [])         : Promise.resolve(base.themes ?? []),
-        ]);
-        return {
-          ...base,
-          ...(resolved ? { name: resolved } : {}),
-          themes: themes.length > 0 ? themes : (base.themes ?? []),
-        };
+        const needsName = base.name === base.code;
+        const resolved = needsName
+          ? await StockDataService.resolveNameByCode(code).catch(() => null)
+          : null;
+        return { ...base, ...(resolved ? { name: resolved } : {}) };
       }));
 
       // Yahoo Finance 一括取得（1リクエストで全銘柄）

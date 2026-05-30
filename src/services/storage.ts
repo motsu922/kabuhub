@@ -31,7 +31,6 @@ export const StorageService = {
         surge: true,
         volume: true,
         highApproach: false,
-        themeChange: true,
         consecutiveDecline: true,
       },
     });

@@ -20,7 +20,6 @@ export const WATCH_PRESETS: Record<WatchStyle, {
       volume:            true,
       surge:             false,
       highApproach:      false,
-      themeChange:       true,
     },
   },
   sell: {
@@ -36,7 +35,6 @@ export const WATCH_PRESETS: Record<WatchStyle, {
       dip:               false,
       consecutiveDecline:false,
       lowApproach:       false,
-      themeChange:       true,
     },
   },
 };

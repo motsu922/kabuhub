@@ -30,7 +30,6 @@ export interface Stock {
   updatedAt: Date;
   priceHistory: number[]; // for mini chart
   dailyCloses?: number[]; // for consecutive decline detection
-  themes?: string[];
   memo?: string;
   technicalSignals?: TechnicalSignal[];
   week52High?: number;
@@ -51,7 +50,6 @@ export interface Article {
   title: string;
   summary?: string;
   relatedStocks?: string[]; // stock codes
-  relatedThemes?: string[];
   savedAt: Date;
   isProcessed: boolean;
 }
@@ -72,7 +70,6 @@ export interface AlertSettings {
   surge: boolean;
   volume: boolean;
   highApproach: boolean;
-  themeChange: boolean;
   consecutiveDecline: boolean; // 続落
 }
 
@@ -104,7 +101,7 @@ export interface Notification {
   id: string;
   stockCode: string;
   stockName: string;
-  type: 'dip' | 'surge' | 'volume' | 'highApproach' | 'themeChange';
+  type: 'dip' | 'surge' | 'volume' | 'highApproach';
   message: string;
   createdAt: Date;
   isRead: boolean;

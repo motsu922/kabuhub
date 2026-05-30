@@ -10,7 +10,6 @@ const TYPE_CONFIG = {
   volume:      { label: '出来高増加', color: Colors.statusAlert },
   highApproach:{ label: '高値接近',  color: Colors.statusWatch },
   lowApproach: { label: '安値接近',  color: Colors.statusAlert },
-  themeChange: { label: 'テーマ変化', color: Colors.primary },
 };
 
 function timeAgo(date: Date): string {

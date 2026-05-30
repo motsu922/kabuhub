@@ -5,7 +5,6 @@ import {
   StyleSheet,
   SafeAreaView,
   FlatList,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
@@ -44,8 +43,6 @@ export default function WatchlistScreen() {
   const [isSearching, setIsSearching] = useState(false);
   const [filter, setFilter] = useState<FilterTab>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('intention');
-  const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
-  const [themeOpen, setThemeOpen] = useState(false);
   const [paywallReason, setPaywallReason] = useState<PaywallReason | null>(null);
 
   const INTENTION_SECTION_CONFIG: Record<UserIntention, { label: string; color: string }> = {
@@ -60,20 +57,10 @@ export default function WatchlistScreen() {
     return { buy, sell };
   }, [stocks, items]);
 
-  const allThemes = useMemo(() => {
-    let base = stocks;
-    if (filter === 'buy')  base = stocks.filter((s) => getItem(s.code)?.intention === 'buy');
-    if (filter === 'sell') base = stocks.filter((s) => getItem(s.code)?.intention === 'sell');
-    const set = new Set<string>();
-    base.forEach((s) => s.themes?.forEach((t) => set.add(t)));
-    return [...set].sort();
-  }, [stocks, items, filter]);
-
   const filteredStocks = useMemo(() => {
     let list = stocks;
     if (filter === 'buy')  list = stocks.filter((s) => getItem(s.code)?.intention === 'buy');
     if (filter === 'sell') list = stocks.filter((s) => getItem(s.code)?.intention === 'sell');
-    if (selectedTheme)     list = list.filter((s) => s.themes?.includes(selectedTheme));
     return [...list].sort((a, b) => {
       const ia = INTENTION_ORDER[getItem(a.code)?.intention ?? 'neutral'];
       const ib = INTENTION_ORDER[getItem(b.code)?.intention ?? 'neutral'];
@@ -119,8 +106,6 @@ export default function WatchlistScreen() {
 
   const handleSetFilter = (f: FilterTab) => {
     setFilter(f);
-    setSelectedTheme(null);
-    setThemeOpen(false);
   };
 
   const handleSearch = useCallback(async (text: string) => {
@@ -251,48 +236,6 @@ export default function WatchlistScreen() {
         </View>
       )}
 
-      {/* テーマフィルタ */}
-      {allThemes.length > 0 && (
-        <View>
-          <TouchableOpacity
-            style={styles.themeToggle}
-            onPress={() => setThemeOpen((v) => !v)}
-            activeOpacity={0.7}
-          >
-            <Text style={styles.themeToggleText}>
-              テーマ{selectedTheme ? `：#${selectedTheme}` : ''}
-            </Text>
-            <Text style={styles.themeToggleArrow}>{themeOpen ? '▲' : '▼'}</Text>
-          </TouchableOpacity>
-          {themeOpen && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.themeRow}
-            >
-              {allThemes.map((theme) => {
-                const active = selectedTheme === theme;
-                return (
-                  <TouchableOpacity
-                    key={theme}
-                    style={[styles.themeChip, active && styles.themeChipActive]}
-                    onPress={() => {
-                      setSelectedTheme(active ? null : theme);
-                      setThemeOpen(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.themeChipText, active && styles.themeChipTextActive]}>
-                      #{theme}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          )}
-        </View>
-      )}
-
       {/* リスト */}
       {isLoading ? (
         <View style={styles.list}>
@@ -313,17 +256,8 @@ export default function WatchlistScreen() {
           <View style={styles.emptyIconWrap}>
             <Text style={styles.emptyIconText}>◎</Text>
           </View>
-          <Text style={styles.emptyTitle}>
-            {selectedTheme ? `#${selectedTheme} の銘柄なし` : '該当銘柄なし'}
-          </Text>
-          <Text style={styles.emptyText}>
-            {selectedTheme ? 'このテーマが付いた銘柄はありません' : '銘柄詳細で意思を設定してください'}
-          </Text>
-          {selectedTheme && (
-            <TouchableOpacity style={styles.clearThemeBtn} onPress={() => setSelectedTheme(null)}>
-              <Text style={styles.clearThemeBtnText}>フィルタを解除</Text>
-            </TouchableOpacity>
-          )}
+          <Text style={styles.emptyTitle}>該当銘柄なし</Text>
+          <Text style={styles.emptyText}>銘柄詳細で意思を設定してください</Text>
         </View>
       ) : (
         <FlatList

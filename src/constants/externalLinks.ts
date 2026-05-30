@@ -26,5 +26,4 @@ export const NotificationMessages = {
   surge: (name: string) => `${name}が急騰しています`,
   volume: (name: string) => `${name}の出来高が急増しています`,
   highApproach: (name: string) => `${name}が高値に接近しています`,
-  themeChange: (name: string) => `${name}の関連テーマに変化があります`,
 } as const;

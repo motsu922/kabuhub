@@ -21,7 +21,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'watch',
     updatedAt: new Date(),
     priceHistory: [13800, 13950, 14100, 13850, 13900, 14050, 14250],
-    themes: ['半導体', 'EUV', 'AI'],
     memo: '',
   },
   {
@@ -37,7 +36,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'alert',
     updatedAt: new Date(),
     priceHistory: [4100, 4050, 3980, 3950, 3920, 3880, 3850],
-    themes: ['ロボット', '工作機械', 'FA'],
   },
   {
     id: '3',
@@ -52,7 +50,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'normal',
     updatedAt: new Date(),
     priceHistory: [2400, 2420, 2435, 2440, 2445, 2442, 2450],
-    themes: ['自動車', 'EV', 'トヨタ'],
   },
   {
     id: '4',
@@ -67,7 +64,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'surge',
     updatedAt: new Date(),
     priceHistory: [8100, 8150, 8200, 8300, 8500, 8750, 8920],
-    themes: ['半導体', '半導体製造装置'],
   },
   {
     id: '5',
@@ -82,7 +78,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'watch',
     updatedAt: new Date(),
     priceHistory: [1620,1640,1660,1680,1700,1710,1720,1730,1740,1750,1760,1770,1775,1780,1790,1795,1800,1805,1810,1812,1815,1818,1820,1825,1828,1830,1835,1840,1845,1850],
-    themes: ['防衛', '重工業', '航空宇宙'],
   },
   {
     id: '6',
@@ -97,7 +92,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'alert',
     updatedAt: new Date(),
     priceHistory: [5200,5350,5500,5680,5800,5950,6100,6200,6350,6500,6580,6650,6700,6720,6750,6800,6850,6900,6950,7000,7050,7080,7100,7150,7200,7250,7300,7350,7400,7420],
-    themes: ['電線', 'データセンター', '光ファイバー', 'AI'],
   },
   {
     id: '7',
@@ -112,7 +106,6 @@ export const MOCK_STOCKS: Stock[] = [
     status: 'watch',
     updatedAt: new Date(),
     priceHistory: [1455,1480,1510,1540,1520,1500,1530,1560,1590,1610,1580,1570,1590,1600,1610,1620,1600,1580,1590,1610,1600,1610,1590,1580,1590,1600,1610,1600,1610,1620],
-    themes: ['半導体', 'NAND', 'フラッシュメモリ', 'AI'],
   },
 ];
 
@@ -123,7 +116,6 @@ export const MOCK_ARTICLES: Article[] = [
     title: '液冷データセンター需要が急拡大、関連銘柄に資金流入',
     summary: '液冷関連に資金流入。AI普及に伴うデータセンターの電力・冷却需要が急増しており、関連銘柄が注目を集めている。',
     relatedStocks: ['6920', '7735'],
-    relatedThemes: ['AI', 'データセンター', '冷却'],
     savedAt: new Date(Date.now() - 3600000),
     isProcessed: true,
   },
@@ -133,7 +125,6 @@ export const MOCK_ARTICLES: Article[] = [
     title: '防衛予算増額で三菱重工など防衛関連株が上昇',
     summary: '政府の防衛費増額方針を受け、三菱重工業など防衛関連銘柄が軒並み上昇。',
     relatedStocks: ['7011'],
-    relatedThemes: ['防衛', '重工業'],
     savedAt: new Date(Date.now() - 7200000),
     isProcessed: true,
   },
@@ -157,14 +148,5 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     message: 'レーザーテックが押し目候補圏に近づいています',
     createdAt: new Date(Date.now() - 3600000),
     isRead: false,
-  },
-  {
-    id: '3',
-    stockCode: '7011',
-    stockName: '三菱重工業',
-    type: 'themeChange',
-    message: '三菱重工業の関連株に大きな動きがあります',
-    createdAt: new Date(Date.now() - 5400000),
-    isRead: true,
   },
 ];

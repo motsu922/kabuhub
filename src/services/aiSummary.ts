@@ -3,7 +3,6 @@ import { Article } from '../types';
 interface SummaryResult {
   summary: string;
   relatedStocks: string[];
-  relatedThemes: string[];
   title: string;
 }
 
@@ -27,8 +26,7 @@ ${content ? `\n内容:\n${content}` : ''}
 {
   "title": "タイトル（30字以内）",
   "summary": "要約（100字以内、中立表現）",
-  "relatedStocks": ["銘柄コード（4桁）のみ"],
-  "relatedThemes": ["テーマタグ（#なし）"]
+  "relatedStocks": ["銘柄コード（4桁）のみ"]
 }
 `.trim();
 
@@ -61,7 +59,6 @@ ${content ? `\n内容:\n${content}` : ''}
       title: result.title,
       summary: result.summary,
       relatedStocks: result.relatedStocks,
-      relatedThemes: result.relatedThemes,
       savedAt: new Date(),
       isProcessed: true,
     };

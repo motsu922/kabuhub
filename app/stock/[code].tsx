@@ -52,7 +52,6 @@ export default function StockDetailScreen() {
   const [securitiesApp, setSecuritiesApp] = useState<string | null>(null);
   const [ohlc, setOhlc] = useState<OHLCBar[]>([]);
   const [interval, setInterval] = useState<ChartInterval>('1d');
-  const [relatedStocks, setRelatedStocks] = useState<Stock[]>([]);
   const [techScore, setTechScore] = useState<TechnicalScore | null>(null);
   const [techSignals, setTechSignals] = useState<TechnicalSignal[]>([]);
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -86,16 +85,6 @@ export default function StockDetailScreen() {
       // ニュース取得
       StockDataService.fetchNews(code).then(setNews);
 
-      // 関連銘柄をリアル株価付きで取得
-      const candidates = StockDataService.getRelatedByTheme(code, s.themes ?? []);
-      if (candidates.length) {
-        setRelatedStocks(candidates);
-        const quotes = await StockDataService.fetchQuotes(candidates.map((c) => c.code));
-        setRelatedStocks(candidates.map((c) => {
-          const q = quotes.get(c.code);
-          return q ? { ...c, ...q } : c;
-        }));
-      }
     });
     StorageService.getSettings().then((s) => setSecuritiesApp(s.securitiesApp));
   }, [code]);
@@ -487,67 +476,6 @@ export default function StockDetailScreen() {
           </View>
         )}
 
-        {/* Themes */}
-        {stock.themes && stock.themes.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>関連テーマ</Text>
-            <View style={styles.themes}>
-              {stock.themes.map((t) => (
-                <View key={t} style={styles.themeTag}>
-                  <Text style={styles.themeText}>#{t}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* 関連銘柄 */}
-        {relatedStocks.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>同テーマの銘柄</Text>
-            {relatedStocks.map((r) => {
-              const sharedThemes = (r.themes ?? []).filter((t) => stock.themes?.includes(t));
-              const relIsUp = r.changePercent >= 0;
-              const inList = isInWatchlist(r.code);
-              return (
-                <TouchableOpacity
-                  key={r.code}
-                  style={styles.relatedCard}
-                  onPress={() => router.push(`/stock/${r.code}`)}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.relatedLeft}>
-                    <View style={styles.relatedNameRow}>
-                      <Text style={styles.relatedName}>{r.name}</Text>
-                      <Text style={styles.relatedCode}>{r.code}</Text>
-                    </View>
-                    <View style={styles.relatedThemes}>
-                      {sharedThemes.map((t) => (
-                        <View key={t} style={styles.sharedThemeTag}>
-                          <Text style={styles.sharedThemeText}>#{t}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    <Text style={[styles.relatedChange, { color: relIsUp ? Colors.positive : Colors.negative }]}>
-                      {r.price.toLocaleString('ja-JP')}円{'  '}
-                      {relIsUp ? '+' : ''}{r.changePercent.toFixed(2)}%
-                    </Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.relatedAddBtn, inList && styles.relatedAddBtnDone]}
-                    onPress={(e) => { e.stopPropagation(); if (!inList) addStock(r.code); }}
-                    disabled={inList}
-                  >
-                    <Text style={[styles.relatedAddText, inList && styles.relatedAddTextDone]}>
-                      {inList ? '登録済' : '+ 追加'}
-                    </Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
-
         {/* 意思・スタンス */}
         {inWatchlist && (() => {
           const item = getItem(code ?? '');
@@ -592,7 +520,6 @@ export default function StockDetailScreen() {
             { key: 'surge',              label: '急騰アラート' },
             { key: 'volume',             label: '出来高急増アラート' },
             { key: 'highApproach',       label: '高値接近アラート' },
-            { key: 'themeChange',        label: 'テーマ変化アラート' },
             { key: 'consecutiveDecline', label: '続落アラート' },
           ];
           const toggleAlert = (key: keyof AlertSettings) => {
@@ -952,18 +879,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  themes: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
-  themeTag: {
-    backgroundColor: Colors.primaryMuted,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  themeText: {
-    fontSize: FontSize.sm,
-    color: Colors.primary,
-    fontWeight: '600',
-  },
   relatedCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -990,18 +905,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
-    fontWeight: '600',
-  },
-  relatedThemes: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  sharedThemeTag: {
-    backgroundColor: Colors.primaryMuted,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: BorderRadius.sm,
-  },
-  sharedThemeText: {
-    fontSize: 10,
-    color: Colors.primary,
     fontWeight: '600',
   },
   relatedChange: {

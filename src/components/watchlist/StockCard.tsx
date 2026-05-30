@@ -113,13 +113,6 @@ export function StockCard({ stock, onPress, intention = 'neutral' }: Props) {
                 </Text>
               </View>
             </View>
-            {stock.themes && stock.themes.length > 0 && (
-              <View style={styles.themes}>
-                {stock.themes.slice(0, 2).map((t) => (
-                  <Text key={t} style={[styles.theme, { color: colors.primary }]}>#{t}</Text>
-                ))}
-              </View>
-            )}
           </View>
           <View style={styles.right}>
             <MiniChart data={chartData} width={60} height={30} showArea positive={isUp} />
@@ -225,8 +218,6 @@ function createStyles(c: ColorPalette) {
       fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },
-    themes: { flexDirection: 'row', gap: 6, marginTop: 1 },
-    theme: { fontSize: 10, opacity: 0.8 },
     right: { alignItems: 'flex-end', gap: 4, marginLeft: 10 },
     time: { fontSize: 9, color: c.textTertiary, fontVariant: ['tabular-nums'] },
   });
