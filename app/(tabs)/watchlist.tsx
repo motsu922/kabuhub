@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,6 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import ReanimatedReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedReanimatedSwipeable';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
@@ -148,26 +147,23 @@ export default function WatchlistScreen() {
     setSearchResults([]);
   };
 
-  const handleRemove = useCallback((code: string) => {
-    removeStock(code);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-  }, [removeStock]);
-
-  const swipeableRefs = useRef<Map<string, ReanimatedSwipeable>>(new Map());
-
-  const renderRightActions = useCallback((code: string) => (
-    <TouchableOpacity
-      style={swipeStyles.deleteBtn}
-      onPress={() => {
-        swipeableRefs.current.get(code)?.close();
-        handleRemove(code);
-      }}
-      activeOpacity={0.8}
-    >
-      <Text style={swipeStyles.deleteIcon}>🗑</Text>
-      <Text style={swipeStyles.deleteLabel}>削除</Text>
-    </TouchableOpacity>
-  ), [handleRemove]);
+  const handleRemove = (code: string, name: string) => {
+    Alert.alert(
+      `${name}を削除`,
+      'ウォッチリストから削除しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: () => {
+            removeStock(code);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -343,21 +339,11 @@ export default function WatchlistScreen() {
               return <GroupSectionHeader label={item.label} count={item.count} />;
             }
             return (
-              <ReanimatedSwipeable
-                ref={(ref) => {
-                  if (ref) swipeableRefs.current.set(item.stock.code, ref);
-                  else swipeableRefs.current.delete(item.stock.code);
-                }}
-                renderRightActions={() => renderRightActions(item.stock.code)}
-                overshootRight={false}
-                friction={2}
-              >
-                <StockCard
-                  stock={item.stock}
-                  intention={getItem(item.stock.code)?.intention ?? 'neutral'}
-                  onPress={() => router.push(`/stock/${item.stock.code}`)}
-                />
-              </ReanimatedSwipeable>
+              <StockCard
+                stock={item.stock}
+                intention={getItem(item.stock.code)?.intention ?? 'neutral'}
+                onPress={() => router.push(`/stock/${item.stock.code}`)}
+              />
             );
           }}
           contentContainerStyle={styles.list}
@@ -626,18 +612,4 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
   },
   clearThemeBtnText: { fontSize: FontSize.sm, color: Colors.primary, fontWeight: '600' },
-});
-
-const swipeStyles = StyleSheet.create({
-  deleteBtn: {
-    width: 72,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: Colors.negative,
-    marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.md,
-    gap: 2,
-  },
-  deleteIcon: { fontSize: 18 },
-  deleteLabel: { fontSize: FontSize.xs, fontWeight: '700', color: '#fff' },
 });
