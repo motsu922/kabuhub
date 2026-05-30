@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider } from 'expo-share-intent';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Colors } from '../src/constants/theme';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
 
@@ -9,6 +10,7 @@ export default function RootLayout() {
   useEffect(() => { RemoteLinkConfig.init(); }, []);
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ShareIntentProvider>
       <StatusBar style="light" />
       <Stack
@@ -22,5 +24,6 @@ export default function RootLayout() {
         <Stack.Screen name="stock/[code]" options={{ headerShown: false }} />
       </Stack>
     </ShareIntentProvider>
+    </GestureHandlerRootView>
   );
 }
