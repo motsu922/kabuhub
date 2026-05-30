@@ -20,7 +20,7 @@ export interface CommentDoc {
 }
 
 // ─── 定数 ────────────────────────────────────────────────
-const RATE_LIMIT_MS = 30_000;       // 連投制限 30秒
+const RATE_LIMIT_MS = 10_000;       // 連投制限 10秒
 const MAX_TEXT_LENGTH = 50;
 const FETCH_LIMIT_LIVE = 50;
 
