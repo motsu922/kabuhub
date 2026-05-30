@@ -8,7 +8,7 @@ export default function HomeScreen() {
         <Text style={styles.title}>KabuHub</Text>
         <Text style={styles.subtitle}>起動確認用の最小画面です</Text>
         <Link href="/dev-status" style={styles.link}>開発ステータスを見る</Link>
-        <Link href="/(legacy)/tabs" style={styles.link}>復元した旧UIを開く</Link>
+        <Text style={styles.notice}>旧UI（legacy）は修正中のため一時的に無効化しています</Text>
       </View>
     </SafeAreaView>
   );
@@ -19,5 +19,6 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#111827', borderRadius: 12, padding: 20, gap: 10 },
   title: { color: '#fff', fontSize: 28, fontWeight: '700' },
   subtitle: { color: '#9CA3AF', fontSize: 14 },
-  link: { color: '#60A5FA', fontSize: 16, marginTop: 8 }
+  link: { color: '#60A5FA', fontSize: 16, marginTop: 8 },
+  notice: { color: '#FBBF24', fontSize: 14, marginTop: 8 }
 });
