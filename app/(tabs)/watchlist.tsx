@@ -66,7 +66,7 @@ export default function WatchlistScreen() {
       const ib = INTENTION_ORDER[getItem(b.code)?.intention ?? 'neutral'];
       return ia - ib;
     });
-  }, [stocks, items, filter, selectedTheme]);
+  }, [stocks, items, filter]);
 
   const listData = useMemo<ListItem[]>(() => {
     if (viewMode === 'group') {
