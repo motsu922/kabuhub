@@ -133,7 +133,6 @@ function createStyles(c: ColorPalette) {
       flexDirection: 'row',
       backgroundColor: c.card,
       borderRadius: BorderRadius.sm,
-      marginBottom: 5,
       borderWidth: 1,
       borderColor: c.cardBorder,
       overflow: 'hidden',

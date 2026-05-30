@@ -42,7 +42,7 @@ export default function TabLayout() {
           bottom: 24,
           left: 20,
           right: 20,
-          height: 62,
+          height: 68,
           borderRadius: 28,
           backgroundColor: colors.card,
           borderTopWidth: 1,
@@ -102,15 +102,15 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     gap: 3,
-    paddingTop: 6,
+    paddingTop: 4,
   },
   icon: {
-    width: 24,
-    height: 24,
+    width: 28,
+    height: 28,
     resizeMode: 'contain',
   },
   label: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
 });

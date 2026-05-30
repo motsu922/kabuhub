@@ -14,7 +14,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { StockCard } from '../../src/components/watchlist/StockCard';
+import { SwipeableStockCard } from '../../src/components/watchlist/SwipeableStockCard';
 import { SkeletonCard } from '../../src/components/common/SkeletonCard';
 import { PaywallModal, PaywallReason } from '../../src/components/common/PaywallModal';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
@@ -37,7 +37,7 @@ export default function WatchlistScreen() {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const { stocks, items, isLoading, addStock, removeStock, isInWatchlist, getItem, refresh } = useWatchlist();
+  const { stocks, items, isLoading, addStock, removeStock, isInWatchlist, getItem, updateIntention, refresh } = useWatchlist();
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Stock[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -294,10 +294,11 @@ export default function WatchlistScreen() {
               );
             }
             return (
-              <StockCard
+              <SwipeableStockCard
                 stock={item.stock}
                 intention={getItem(item.stock.code)?.intention ?? 'neutral'}
                 onPress={() => router.push(`/stock/${item.stock.code}`)}
+                onIntentionChange={updateIntention}
               />
             );
           }}

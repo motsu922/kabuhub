@@ -11,7 +11,7 @@ import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
-import { StockCard } from '../../src/components/watchlist/StockCard';
+import { SwipeableStockCard } from '../../src/components/watchlist/SwipeableStockCard';
 import { SkeletonCard } from '../../src/components/common/SkeletonCard';
 import { BubbleChart } from '../../src/components/home/BubbleChart';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
@@ -72,7 +72,7 @@ function generateNotifications(stocks: Stock[], items: WatchlistItem[]): Notific
 export default function HomeScreen() {
   const router = useRouter();
   const { colors, theme } = useTheme();
-  const { stocks, items, isLoading, lastUpdatedAt, getItem, refresh } = useWatchlist();
+  const { stocks, items, isLoading, lastUpdatedAt, getItem, updateIntention, refresh } = useWatchlist();
 
   const notifications = generateNotifications(stocks, items);
   const scrollY = React.useRef(new Animated.Value(0)).current;
@@ -166,11 +166,12 @@ export default function HomeScreen() {
         ) : stocks.length > 0 ? (
           <Section title="ウォッチリスト" onMore={() => router.push('/(tabs)/watchlist')} colors={colors}>
             {stocks.slice(0, 3).map((s) => (
-              <StockCard
+              <SwipeableStockCard
                 key={s.id}
                 stock={s}
                 intention={getItem(s.code)?.intention ?? 'neutral'}
                 onPress={() => router.push(`/stock/${s.code}`)}
+                onIntentionChange={updateIntention}
               />
             ))}
           </Section>
