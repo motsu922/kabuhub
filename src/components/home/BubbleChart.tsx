@@ -10,8 +10,8 @@ type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
 
 // レイアウト定数（通常 / 縮小）
 const LAYOUT = {
-  normal:  { chartH: 220, colW: 88, minR: 12, maxR: 32 },
-  compact: { chartH: 170, colW: 64, minR:  8, maxR: 22 },
+  normal:  { chartH: 220, colW: 64, minR: 10, maxR: 28 },
+  compact: { chartH: 170, colW: 46, minR:  6, maxR: 18 },
 } as const;
 
 const Y_RANGE   = 10;   // ±10%
@@ -153,8 +153,23 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
     );
   }, [bubbles]);
 
-  const selected  = bubbles.find(b => b.stock.code === selectedCode);
-  const chartW    = Math.max(sectors.length * L.colW, L.colW * 3);
+  const selected     = bubbles.find(b => b.stock.code === selectedCode);
+
+  // 重なりバブルグループ（物理的に重なっている銘柄を% 降順で並べる）
+  const overlapGroup = useMemo(() => {
+    const sel = bubbles.find(b => b.stock.code === selectedCode);
+    if (!sel) return [] as Bubble[];
+    return bubbles
+      .filter(b => {
+        const dx = b.x - sel.x;
+        const dy = b.y - sel.y;
+        return Math.sqrt(dx * dx + dy * dy) < (b.r + sel.r);
+      })
+      .sort((a, b) => b.pct - a.pct);
+  }, [selectedCode, bubbles]);
+
+  const overlapIdx = overlapGroup.findIndex(b => b.stock.code === selectedCode);
+  const chartW     = Math.max(sectors.length * L.colW, L.colW * 3);
 
   /* ── render ──────────────────────────────── */
   return (
@@ -316,7 +331,10 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
           b={selected}
           colors={colors}
           s={s}
+          overlapGroup={overlapGroup}
+          overlapIdx={overlapIdx}
           onClose={() => setSelected(null)}
+          onSelectOverlap={setSelected}
           onNavigate={() => { setSelected(null); onPressStock(selected.stock.code); }}
         />
       )}
@@ -326,11 +344,14 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
 
 /* ── Detail panel ─────────────────────────────────────────────────────────── */
 
-function DetailPanel({ b, colors, s, onClose, onNavigate }: {
+function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelectOverlap, onNavigate }: {
   b: Bubble;
   colors: ColorPalette;
   s: ReturnType<typeof createStyles>;
+  overlapGroup: Bubble[];
+  overlapIdx: number;
   onClose: () => void;
+  onSelectOverlap: (code: string) => void;
   onNavigate: () => void;
 }) {
   const { stock, item, pct } = b;
@@ -357,6 +378,25 @@ function DetailPanel({ b, colors, s, onClose, onNavigate }: {
           <Text style={s.detailName} numberOfLines={1}>{stock.name}</Text>
           <Text style={s.detailCode}>{stock.code}</Text>
         </View>
+        {overlapGroup.length > 1 && (
+          <View style={s.overlapNav}>
+            <TouchableOpacity
+              onPress={() => overlapIdx > 0 && onSelectOverlap(overlapGroup[overlapIdx - 1].stock.code)}
+              disabled={overlapIdx === 0}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 6 }}
+            >
+              <Text style={[s.navArrow, overlapIdx === 0 && s.navDisabled]}>◀</Text>
+            </TouchableOpacity>
+            <Text style={s.navCount}>{overlapIdx + 1}/{overlapGroup.length}</Text>
+            <TouchableOpacity
+              onPress={() => overlapIdx < overlapGroup.length - 1 && onSelectOverlap(overlapGroup[overlapIdx + 1].stock.code)}
+              disabled={overlapIdx === overlapGroup.length - 1}
+              hitSlop={{ top: 10, bottom: 10, left: 6, right: 10 }}
+            >
+              <Text style={[s.navArrow, overlapIdx === overlapGroup.length - 1 && s.navDisabled]}>▶</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <TouchableOpacity onPress={onClose} style={s.closeBtn}>
           <Text style={s.closeTxt}>✕</Text>
         </TouchableOpacity>
@@ -702,7 +742,11 @@ function createStyles(c: ColorPalette) {
       borderColor: c.cardBorder,
       padding: Spacing.md,
     },
-    detailHead: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+    detailHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+    overlapNav: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
+    navArrow:   { fontSize: 14, fontWeight: '800', color: c.primary },
+    navDisabled:{ color: c.textTertiary },
+    navCount:   { fontSize: 11, fontWeight: '600', color: c.textTertiary, fontVariant: ['tabular-nums' as any] },
     detailName: { fontSize: FontSize.md, fontWeight: '700', color: c.text },
     detailCode: { fontSize: FontSize.xs, color: c.textTertiary, marginTop: 2 },
     closeBtn: { padding: 4, marginLeft: 8 },
