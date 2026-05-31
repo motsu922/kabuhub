@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
+import { useAppSettings } from '../../src/contexts/SettingsContext';
 import { StorageService } from '../../src/services/storage';
 import { SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { UserSettings, SecuritiesApp } from '../../src/types';
@@ -23,6 +24,7 @@ const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string; desc: string }[] =
 
 export default function SettingsScreen() {
   const { colors, theme, toggleTheme } = useTheme();
+  const { effectsEnabled, setEffectsEnabled } = useAppSettings();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   const [settings, setSettings] = useState<UserSettings>({
@@ -75,6 +77,35 @@ export default function SettingsScreen() {
             </View>
             <View style={[styles.themeSwitch, { backgroundColor: theme === 'dark' ? colors.surface : colors.primaryMuted, borderColor: theme === 'dark' ? colors.cardBorder : colors.primary }]}>
               <Text style={styles.themeSwitchIcon}>{theme === 'dark' ? '🌙' : '☀️'}</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* エフェクト */}
+        <View style={styles.spacer} />
+        <SectionHeader title="バブルチャート" styles={styles} />
+        <View style={styles.card}>
+          <TouchableOpacity
+            style={styles.row}
+            onPress={() => setEffectsEnabled(!effectsEnabled)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowTitle}>🎆 エフェクト</Text>
+              <Text style={styles.rowDesc}>
+                花火・紙吹雪などのアニメーション
+              </Text>
+            </View>
+            <View style={[
+              styles.toggleTrack,
+              { backgroundColor: effectsEnabled ? colors.primary : colors.surface,
+                borderColor: effectsEnabled ? colors.primary : colors.cardBorder },
+            ]}>
+              <View style={[
+                styles.toggleThumb,
+                { transform: [{ translateX: effectsEnabled ? 18 : 0 }],
+                  backgroundColor: effectsEnabled ? '#06090F' : colors.textTertiary },
+              ]} />
             </View>
           </TouchableOpacity>
         </View>
@@ -214,6 +245,19 @@ function createStyles(c: ColorPalette) {
     rowDesc: {
       fontSize: FontSize.xs,
       color: c.textTertiary,
+    },
+    toggleTrack: {
+      width: 44,
+      height: 26,
+      borderRadius: 13,
+      borderWidth: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 3,
+    },
+    toggleThumb: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
     },
     themeSwitch: {
       width: 40,

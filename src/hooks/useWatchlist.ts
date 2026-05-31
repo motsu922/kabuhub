@@ -131,8 +131,14 @@ export function useWatchlist() {
 
   const updateIntention = useCallback(async (code: string, intention: UserIntention) => {
     await StorageService.updateIntention(code, intention);
-    await load();
-  }, [load]);
+    // items だけ即時更新 — 株価データの再取得は不要
+    setItems(prev => prev.map(item =>
+      item.stockCode === code ? { ...item, intention } : item
+    ));
+    itemsRef.current = itemsRef.current.map(item =>
+      item.stockCode === code ? { ...item, intention } : item
+    );
+  }, []);
 
   const updateGroup = useCallback(async (code: string, group: string | null) => {
     await StorageService.updateGroup(code, group);

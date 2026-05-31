@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider } from 'expo-share-intent';
 import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
+import { SettingsProvider } from '../src/contexts/SettingsContext';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
 
 function AppStack() {
@@ -29,9 +30,11 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider>
-      <ShareIntentProvider>
-        <AppStack />
-      </ShareIntentProvider>
+      <SettingsProvider>
+        <ShareIntentProvider>
+          <AppStack />
+        </ShareIntentProvider>
+      </SettingsProvider>
     </ThemeProvider>
   );
 }

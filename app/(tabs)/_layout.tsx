@@ -70,6 +70,13 @@ export default function TabLayout() {
             style={StyleSheet.absoluteFill}
           />
         ),
+        tabBarItemStyle: {
+          height: 76,
+          paddingTop: 0,
+          paddingBottom: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
       }}

@@ -5,6 +5,7 @@ import {
 import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
+import { useAppSettings } from '../../contexts/SettingsContext';
 
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
 
@@ -101,6 +102,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const [compact, setCompact]       = useState(false);
   const [filter, setFilter]         = useState<BubbleFilter>('all');
   const [selectedCode, setSelected] = useState<string | null>(null);
+  const { effectsEnabled }          = useAppSettings();
   const s = useMemo(() => createStyles(colors), [colors]);
 
   const L = LAYOUT[compact ? 'compact' : 'normal'];
@@ -323,8 +325,8 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
                 );
               })}
 
-              {/* 持ってる銘柄エフェクト: 5%紙吹雪 / 10%花火 / 15%3連花火 */}
-              {bubbles
+              {/* 持ってる銘柄エフェクト */}
+              {effectsEnabled && bubbles
                 .filter(b => b.group === 'holding' && b.pct >= 5)
                 .map(b => (
                   <BubbleEffect key={`eff-${b.stock.code}`} x={b.x} y={b.y} pct={b.pct} />
