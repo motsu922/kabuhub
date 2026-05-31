@@ -6,10 +6,8 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  Linking,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useRouter } from 'expo-router';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -252,7 +250,6 @@ function SituationCard({ group, colors, onPressStock }: {
       {group.notifications.map((n) => {
         const pctMatch = n.message.match(/[+-][\d.]+%/)?.[0] ?? '';
         const detail = n.message.replace(/\(.*\)/, '').trim();
-        const xUrl = `https://x.com/search?q=${encodeURIComponent(n.stockName + ' 株')}&f=live`;
         return (
           <TouchableOpacity
             key={n.stockCode}
@@ -264,13 +261,6 @@ function SituationCard({ group, colors, onPressStock }: {
               <Text style={sStyles.stockName} numberOfLines={1}>{n.stockName}</Text>
               <Text style={sStyles.stockSub}>{n.stockCode}  {detail}</Text>
             </View>
-            <TouchableOpacity
-              style={sStyles.xBtn}
-              onPress={(e) => { e.stopPropagation(); Linking.openURL(xUrl); }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
-            >
-              <FontAwesome6 name="x-twitter" brand size={13} color="#fff" />
-            </TouchableOpacity>
             <View style={[sStyles.pctChip, { backgroundColor: accent + '18' }]}>
               <Text style={[sStyles.pctText, { color: accent }]}>{pctMatch}</Text>
             </View>
@@ -329,16 +319,6 @@ function createSituationStyles(c: ColorPalette) {
     rowLeft: { flex: 1, gap: 2 },
     stockName: { fontSize: FontSize.sm, fontWeight: '700', color: c.text },
     stockSub: { fontSize: FontSize.xs, color: c.textTertiary },
-    xBtn: {
-      width: 28,
-      height: 28,
-      borderRadius: 7,
-      backgroundColor: '#000',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.15)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     pctChip: {
       paddingHorizontal: 8,
       paddingVertical: 3,
