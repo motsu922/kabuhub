@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { Stock, WatchlistItem, AlertSettings, UserIntention } from '../types';
+import { Stock, OHLCBar, WatchlistItem, AlertSettings, UserIntention } from '../types';
 import { StorageService } from '../services/storage';
 import { StockDataService } from '../services/stockData';
 import { NotificationService } from '../services/notificationService';
@@ -51,16 +51,25 @@ export function useWatchlist() {
       // Yahoo Finance 一括取得（1リクエストで全銘柄）
       const quoteMap = await StockDataService.fetchQuotes(codes);
 
-      // ミニチャート用履歴 + テクニカル分析用OHLCを並列取得
-      const [historyArr, ohlcArr] = await Promise.all([
+      // ミニチャート用履歴 + テクニカル分析用OHLC(日足/週足)を並列取得
+      const [historyArr, ohlcArr, ohlcWeeklyArr] = await Promise.all([
         Promise.all(codes.map((c) => StockDataService.fetchPriceHistory(c))),
         Promise.all(codes.map((c) => StockDataService.fetchOHLC(c, '1d'))),
+        Promise.all(codes.map((c) => StockDataService.fetchOHLC(c, '1wk').catch(() => [] as OHLCBar[]))),
       ]);
 
+      const calcPct = (bars: OHLCBar[], n: number) => {
+        if (bars.length <= n) return undefined;
+        const last = bars[bars.length - 1].close;
+        const prev = bars[bars.length - 1 - n].close;
+        return prev !== 0 ? ((last - prev) / prev) * 100 : undefined;
+      };
+
       const enriched = baseStocks.map((s, i) => {
-        const quote   = quoteMap.get(s.code);
-        const history = historyArr[i];
-        const ohlc    = ohlcArr[i];
+        const quote      = quoteMap.get(s.code);
+        const history    = historyArr[i];
+        const ohlc       = ohlcArr[i];
+        const ohlcWeekly = ohlcWeeklyArr[i];
         const technicalSignals = ohlc.length >= 30 ? detectSignals(ohlc) : [];
         const avgVolume20d = ohlc.length >= 5
           ? ohlc.slice(-Math.min(ohlc.length, 20)).reduce((sum, b) => sum + b.volume, 0) / Math.min(ohlc.length, 20)
@@ -71,6 +80,9 @@ export function useWatchlist() {
           priceHistory: history.length ? history : s.priceHistory,
           technicalSignals,
           avgVolume20d,
+          change7d:   calcPct(ohlc, 7),
+          change30d:  calcPct(ohlc, 30),
+          change365d: calcPct(ohlcWeekly, 52),
         };
       });
 

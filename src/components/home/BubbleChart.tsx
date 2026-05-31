@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Animated,
+  Modal, useWindowDimensions, SafeAreaView,
 } from 'react-native';
 import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
@@ -8,26 +9,39 @@ import { ExternalLinks } from '../../constants/externalLinks';
 import { useAppSettings } from '../../contexts/SettingsContext';
 
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
+type Period = '1d' | '7d' | '30d' | '365d';
 
-// レイアウト定数（通常 / 縮小）
+const PERIOD_CONFIG: Record<Period, { range: number; ticks: number[]; label: string }> = {
+  '1d':   { range: 10,  ticks: [10, 5, 0, -5, -10],          label: '1日' },
+  '7d':   { range: 20,  ticks: [20, 10, 0, -10, -20],         label: '7日' },
+  '30d':  { range: 40,  ticks: [40, 20, 0, -20, -40],         label: '30日' },
+  '365d': { range: 100, ticks: [100, 50, 0, -50, -100],       label: '365日' },
+};
+
 const LAYOUT = {
-  normal:  { chartH: 220, colW: 64, minR: 10, maxR: 28 },
-  compact: { chartH: 170, colW: 46, minR:  6, maxR: 18 },
+  normal:     { chartH: 220, colW: 64, minR: 10, maxR: 28 },
+  compact:    { chartH: 170, colW: 46, minR:  6, maxR: 18 },
+  fullscreen: { chartH: 0,   colW: 80, minR: 12, maxR: 36 }, // chartH filled at runtime
 } as const;
 
-const Y_RANGE   = 10;   // ±10%
 const YAXIS_W   = 36;
 const SEC_LBL_H = 34;
-const Y_TICKS   = [10, 5, 0, -5, -10];
 
-function yPx(pct: number, chartH: number): number {
-  return chartH / 2 - (pct / Y_RANGE) * (chartH / 2);
+function yPx(pct: number, yRange: number, chartH: number): number {
+  return chartH / 2 - (pct / yRange) * (chartH / 2);
 }
 
 function intentionGroup(intention: UserIntention | undefined): BubbleFilter {
   if (intention === 'buy')  return 'interested';
   if (intention === 'hold') return 'holding';
   return 'watching';
+}
+
+function getPct(stock: Stock, period: Period): number {
+  if (period === '7d'   && stock.change7d   != null) return stock.change7d;
+  if (period === '30d'  && stock.change30d  != null) return stock.change30d;
+  if (period === '365d' && stock.change365d != null) return stock.change365d;
+  return stock.changePercent ?? 0;
 }
 
 // ── セクター自動判定 ──────────────────────────────────────────────────────────
@@ -102,12 +116,17 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const [compact, setCompact]       = useState(false);
   const [filter, setFilter]         = useState<BubbleFilter>('all');
   const [selectedCode, setSelected] = useState<string | null>(null);
+  const [period, setPeriod]         = useState<Period>('1d');
+  const [fullscreen, setFullscreen] = useState(false);
   const { effectsEnabled }          = useAppSettings();
+  const { height: screenH }         = useWindowDimensions();
   const s = useMemo(() => createStyles(colors), [colors]);
 
-  const L = LAYOUT[compact ? 'compact' : 'normal'];
+  const pcfg  = PERIOD_CONFIG[period];
+  const L     = fullscreen
+    ? { ...LAYOUT.fullscreen, chartH: Math.floor(screenH * 0.52) }
+    : LAYOUT[compact ? 'compact' : 'normal'];
 
-  /* ── filtered stocks ─────────────────────── */
   const filtered = useMemo(() =>
     stocks.filter(st => {
       const item = items.find(i => i.stockCode === st.code);
@@ -116,7 +135,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
     [stocks, items, filter]
   );
 
-  /* ── sectors (X-axis) ────────────────────── */
   const sectors = useMemo(() => {
     const set = new Set(filtered.map(st => {
       const item = items.find(i => i.stockCode === st.code);
@@ -127,37 +145,32 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
     );
   }, [filtered, items]);
 
-  /* ── bubble data ─────────────────────────── */
   const bubbles = useMemo<Bubble[]>(() => {
     if (!filtered.length) return [];
     const rawSizes = filtered.map(st => st.volume);
     const maxSize  = Math.max(...rawSizes, 1);
 
     return filtered.map((st, idx) => {
-      const item        = items.find(i => i.stockCode === st.code);
-      const sector      = deriveSector(st, item);
-      const pct         = st.changePercent ?? 0;
-      const r           = L.minR + (rawSizes[idx] / maxSize) * (L.maxR - L.minR);
-      const yRaw        = yPx(pct, L.chartH);
-      const y           = Math.max(r + 2, Math.min(L.chartH - r - 2, yRaw));
-      const x           = sectors.indexOf(sector) * L.colW + L.colW / 2;
-      const color       = pct > 0.5 ? colors.positive : pct < -0.5 ? colors.negative : colors.neutral;
+      const item   = items.find(i => i.stockCode === st.code);
+      const sector = deriveSector(st, item);
+      const pct    = getPct(st, period);
+      const r      = L.minR + (rawSizes[idx] / maxSize) * (L.maxR - L.minR);
+      const yRaw   = yPx(pct, pcfg.range, L.chartH);
+      const y      = Math.max(r + 2, Math.min(L.chartH - r - 2, yRaw));
+      const x      = sectors.indexOf(sector) * L.colW + L.colW / 2;
+      const color  = pct > 0.5 ? colors.positive : pct < -0.5 ? colors.negative : colors.neutral;
       return { stock: st, item, sector, pct, x, y, r, color, group: intentionGroup(item?.intention) };
     });
-  }, [filtered, sectors, items, colors, L]);
+  }, [filtered, sectors, items, colors, L, period, pcfg.range]);
 
-  /* ── 今日の主役 ──────────────────────────── */
   const star = useMemo(() => {
     const pos = bubbles.filter(b => b.pct > 0);
     if (!pos.length) return null;
-    return pos.reduce((best, b) =>
-      Math.abs(b.pct) > Math.abs(best.pct) ? b : best
-    );
+    return pos.reduce((best, b) => Math.abs(b.pct) > Math.abs(best.pct) ? b : best);
   }, [bubbles]);
 
-  const selected     = bubbles.find(b => b.stock.code === selectedCode);
+  const selected = bubbles.find(b => b.stock.code === selectedCode);
 
-  // 重なりバブルグループ（物理的に重なっている銘柄を% 降順で並べる）
   const overlapGroup = useMemo(() => {
     const sel = bubbles.find(b => b.stock.code === selectedCode);
     if (!sel) return [] as Bubble[];
@@ -173,19 +186,37 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const overlapIdx = overlapGroup.findIndex(b => b.stock.code === selectedCode);
   const chartW     = Math.max(sectors.length * L.colW, L.colW * 3);
 
-  /* ── render ──────────────────────────────── */
-  return (
-    <View style={s.root}>
+  const chartContent = (isFS: boolean) => (
+    <ChartCanvas
+      bubbles={bubbles}
+      sectors={sectors}
+      L={L}
+      pcfg={pcfg}
+      chartW={chartW}
+      colors={colors}
+      s={s}
+      selectedCode={selectedCode}
+      setSelected={setSelected}
+      effectsEnabled={effectsEnabled}
+      isFullscreen={isFS}
+    />
+  );
 
-      {/* Header */}
-      <View style={s.header}>
-        <Text style={s.title}>バブルビュー</Text>
-        <TouchableOpacity
-          style={s.compactBtn}
-          onPress={() => setCompact(c => !c)}
-        >
-          <Text style={s.compactTxt}>{compact ? '⊕ 拡大' : '⊖ 縮小'}</Text>
-        </TouchableOpacity>
+  const controls = (isFS: boolean) => (
+    <>
+      {/* Period selector */}
+      <View style={s.periodRow}>
+        {(Object.keys(PERIOD_CONFIG) as Period[]).map(p => (
+          <TouchableOpacity
+            key={p}
+            style={[s.periodChip, period === p && s.periodChipActive]}
+            onPress={() => setPeriod(p)}
+          >
+            <Text style={[s.periodTxt, period === p && s.periodTxtActive]}>
+              {PERIOD_CONFIG[p].label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Filters */}
@@ -207,6 +238,23 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
           </TouchableOpacity>
         ))}
       </View>
+    </>
+  );
+
+  return (
+    <View style={s.root}>
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.title}>バブルビュー</Text>
+        <TouchableOpacity style={s.iconBtn} onPress={() => setFullscreen(true)}>
+          <Text style={s.iconBtnTxt}>⛶</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.compactBtn, { marginLeft: 6 }]} onPress={() => setCompact(c => !c)}>
+          <Text style={s.compactTxt}>{compact ? '⊕ 拡大' : '⊖ 縮小'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {controls(false)}
 
       {/* 今日の主役 */}
       {star && (
@@ -221,113 +269,19 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
             <Text style={s.starName} numberOfLines={1}>{star.stock.name}</Text>
           </View>
           <View style={s.starRight}>
-            <Text style={[s.starPct, { color: colors.positive }]}>+{star.pct.toFixed(2)}%</Text>
+            <Text style={[s.starPct, { color: star.pct >= 0 ? colors.positive : colors.negative }]}>
+              {star.pct >= 0 ? '+' : ''}{star.pct.toFixed(2)}%
+            </Text>
           </View>
         </TouchableOpacity>
       )}
 
-      {/* Chart */}
       {filtered.length === 0 ? (
         <View style={s.empty}>
           <Text style={s.emptyTxt}>表示できる銘柄がありません</Text>
         </View>
-      ) : (
-        <View style={s.chartWrap}>
-          {/* Y-axis labels */}
-          <View style={{ width: YAXIS_W, height: L.chartH, position: 'relative' }}>
-            {Y_TICKS.map(tick => (
-              <Text key={tick} style={[s.yTick, { top: yPx(tick, L.chartH) - 8 }]}>
-                {tick > 0 ? '+' : ''}{tick}%
-              </Text>
-            ))}
-          </View>
+      ) : chartContent(false)}
 
-          {/* Scrollable canvas */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
-            <View style={{ width: chartW, height: L.chartH + SEC_LBL_H }}>
-
-              {/* Grid lines */}
-              {Y_TICKS.map(tick => (
-                <View
-                  key={tick}
-                  style={[
-                    s.grid,
-                    { top: yPx(tick, L.chartH), width: chartW },
-                    tick === 0 && s.zeroLine,
-                  ]}
-                />
-              ))}
-
-              {/* Sector columns */}
-              {sectors.map((sec, i) => (
-                <React.Fragment key={sec}>
-                  {i > 0 && (
-                    <View style={[s.colDiv, { left: i * L.colW, height: L.chartH }]} />
-                  )}
-                  <Text
-                    style={[s.secLbl, { left: i * L.colW, width: L.colW, top: L.chartH + 4 }]}
-                    numberOfLines={2}
-                  >
-                    {sec}
-                  </Text>
-                </React.Fragment>
-              ))}
-
-              {/* Bubbles */}
-              {bubbles.map(b => {
-                const isSelected = selectedCode === b.stock.code;
-                const nameInside = b.stock.name.slice(0, b.r >= 26 ? 6 : b.r >= 20 ? 4 : 3);
-                const showInside = b.r >= 18;
-                const extTop     = Math.min(b.y + b.r + 2, L.chartH - 10);
-                return (
-                  <React.Fragment key={b.stock.code}>
-                    <TouchableOpacity
-                      style={[s.bubble, {
-                        left: b.x - b.r,
-                        top:  b.y - b.r,
-                        width:  b.r * 2,
-                        height: b.r * 2,
-                        borderRadius: b.r,
-                        backgroundColor: b.color + (isSelected ? '44' : '22'),
-                        borderColor:     b.color + (isSelected ? 'FF' : '99'),
-                        borderWidth: isSelected ? 2 : 1.5,
-                      }]}
-                      onPress={() => setSelected(isSelected ? null : b.stock.code)}
-                      activeOpacity={0.75}
-                    >
-                      {showInside && (
-                        <Text style={[s.bubbleLbl, { color: b.color, fontSize: b.r >= 24 ? 9 : 7 }]} numberOfLines={1}>
-                          {nameInside}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                    {!showInside && (
-                      <Text
-                        style={[s.bubbleExtLbl, { color: b.color, left: b.x - 28, top: extTop }]}
-                        numberOfLines={1}
-                        pointerEvents="none"
-                      >
-                        {b.stock.name.length > 6 ? b.stock.name.slice(0, 6) : b.stock.name}
-                      </Text>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-
-              {/* 持ってる銘柄エフェクト */}
-              {effectsEnabled && bubbles
-                .filter(b => b.group === 'holding' && b.pct >= 5)
-                .map(b => (
-                  <BubbleEffect key={`eff-${b.stock.code}`} x={b.x} y={b.y} pct={b.pct} />
-                ))
-              }
-
-            </View>
-          </ScrollView>
-        </View>
-      )}
-
-      {/* Detail panel */}
       {selected && (
         <DetailPanel
           b={selected}
@@ -340,6 +294,179 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
           onNavigate={() => { setSelected(null); onPressStock(selected.stock.code); }}
         />
       )}
+
+      {/* Fullscreen Modal */}
+      <Modal
+        visible={fullscreen}
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() => setFullscreen(false)}
+      >
+        <SafeAreaView style={s.fsContainer}>
+          {/* FS Header */}
+          <View style={s.fsHeader}>
+            <Text style={s.title}>バブルビュー</Text>
+            <TouchableOpacity style={s.fsCloseBtn} onPress={() => setFullscreen(false)}>
+              <Text style={s.fsCloseTxt}>✕ 閉じる</Text>
+            </TouchableOpacity>
+          </View>
+
+          {controls(true)}
+
+          {star && (
+            <TouchableOpacity
+              style={s.starBanner}
+              onPress={() => setSelected(star.stock.code)}
+              activeOpacity={0.8}
+            >
+              <Text style={s.starEmoji}>🔥</Text>
+              <View style={s.starMid}>
+                <Text style={s.starLabel}>今日の主役</Text>
+                <Text style={s.starName} numberOfLines={1}>{star.stock.name}</Text>
+              </View>
+              <View style={s.starRight}>
+                <Text style={[s.starPct, { color: star.pct >= 0 ? colors.positive : colors.negative }]}>
+                  {star.pct >= 0 ? '+' : ''}{star.pct.toFixed(2)}%
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {filtered.length === 0 ? (
+            <View style={s.empty}>
+              <Text style={s.emptyTxt}>表示できる銘柄がありません</Text>
+            </View>
+          ) : chartContent(true)}
+
+          {selected && (
+            <DetailPanel
+              b={selected}
+              colors={colors}
+              s={s}
+              overlapGroup={overlapGroup}
+              overlapIdx={overlapIdx}
+              onClose={() => setSelected(null)}
+              onSelectOverlap={setSelected}
+              onNavigate={() => { setSelected(null); onPressStock(selected.stock.code); }}
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
+    </View>
+  );
+}
+
+/* ── Chart canvas (shared between normal and fullscreen) ─────────────────── */
+
+function ChartCanvas({
+  bubbles, sectors, L, pcfg, chartW, colors, s,
+  selectedCode, setSelected, effectsEnabled,
+}: {
+  bubbles: Bubble[];
+  sectors: string[];
+  L: { chartH: number; colW: number; minR: number; maxR: number };
+  pcfg: { range: number; ticks: number[]; label: string };
+  chartW: number;
+  colors: ColorPalette;
+  s: ReturnType<typeof createStyles>;
+  selectedCode: string | null;
+  setSelected: (code: string | null) => void;
+  effectsEnabled: boolean;
+  isFullscreen: boolean;
+}) {
+  return (
+    <View style={s.chartWrap}>
+      {/* Y-axis labels */}
+      <View style={{ width: YAXIS_W, height: L.chartH, position: 'relative' }}>
+        {pcfg.ticks.map(tick => (
+          <Text key={tick} style={[s.yTick, { top: yPx(tick, pcfg.range, L.chartH) - 8 }]}>
+            {tick > 0 ? '+' : ''}{tick}%
+          </Text>
+        ))}
+      </View>
+
+      {/* Scrollable canvas */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1 }}>
+        <View style={{ width: chartW, height: L.chartH + SEC_LBL_H }}>
+
+          {/* Grid lines */}
+          {pcfg.ticks.map(tick => (
+            <View
+              key={tick}
+              style={[
+                s.grid,
+                { top: yPx(tick, pcfg.range, L.chartH), width: chartW },
+                tick === 0 && s.zeroLine,
+              ]}
+            />
+          ))}
+
+          {/* Sector columns */}
+          {sectors.map((sec, i) => (
+            <React.Fragment key={sec}>
+              {i > 0 && (
+                <View style={[s.colDiv, { left: i * L.colW, height: L.chartH }]} />
+              )}
+              <Text
+                style={[s.secLbl, { left: i * L.colW, width: L.colW, top: L.chartH + 4 }]}
+                numberOfLines={2}
+              >
+                {sec}
+              </Text>
+            </React.Fragment>
+          ))}
+
+          {/* Bubbles */}
+          {bubbles.map(b => {
+            const isSelected = selectedCode === b.stock.code;
+            const nameInside = b.stock.name.slice(0, b.r >= 26 ? 6 : b.r >= 20 ? 4 : 3);
+            const showInside = b.r >= 18;
+            const extTop     = Math.min(b.y + b.r + 2, L.chartH - 10);
+            return (
+              <React.Fragment key={b.stock.code}>
+                <TouchableOpacity
+                  style={[s.bubble, {
+                    left: b.x - b.r,
+                    top:  b.y - b.r,
+                    width:  b.r * 2,
+                    height: b.r * 2,
+                    borderRadius: b.r,
+                    backgroundColor: b.color + (isSelected ? '44' : '22'),
+                    borderColor:     b.color + (isSelected ? 'FF' : '99'),
+                    borderWidth: isSelected ? 2 : 1.5,
+                  }]}
+                  onPress={() => setSelected(isSelected ? null : b.stock.code)}
+                  activeOpacity={0.75}
+                >
+                  {showInside && (
+                    <Text style={[s.bubbleLbl, { color: b.color, fontSize: b.r >= 24 ? 9 : 7 }]} numberOfLines={1}>
+                      {nameInside}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+                {!showInside && (
+                  <Text
+                    style={[s.bubbleExtLbl, { color: b.color, left: b.x - 28, top: extTop }]}
+                    numberOfLines={1}
+                    pointerEvents="none"
+                  >
+                    {b.stock.name.length > 6 ? b.stock.name.slice(0, 6) : b.stock.name}
+                  </Text>
+                )}
+              </React.Fragment>
+            );
+          })}
+
+          {/* 持ってる銘柄エフェクト */}
+          {effectsEnabled && bubbles
+            .filter(b => b.group === 'holding' && b.pct >= 5)
+            .map(b => (
+              <BubbleEffect key={`eff-${b.stock.code}`} x={b.x} y={b.y} pct={b.pct} />
+            ))
+          }
+
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -445,7 +572,6 @@ function Stat({ label, value, valueColor, colors }: {
 const CONFETTI_COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#CC5DE8','#F06595','#74C0FC','#51CF66','#FCC419'];
 const FW_COLORS       = ['#FFD700','#FF6B35','#A8E063','#56CCF2','#FF69B4','#FFA500','#C084FC','#FB7185','#FBBF24','#34D399','#60A5FA','#F87171'];
 
-/* ── 小さな輝き (5%〜) ── 控えめなキラキラ ─── */
 function SparkleEffect({ x, y }: { x: number; y: number }) {
   const N = 7;
   const pieces = useRef(
@@ -501,7 +627,6 @@ function SparkleEffect({ x, y }: { x: number; y: number }) {
   );
 }
 
-/* ── 紙吹雪 (10%〜) ─── */
 function ConfettiEffect({ x, y }: { x: number; y: number }) {
   const N = 14;
   const pieces = useRef(
@@ -565,7 +690,6 @@ function ConfettiEffect({ x, y }: { x: number; y: number }) {
   );
 }
 
-/* ── 花火共通 ─── */
 type BurstAnim = { pos: Animated.ValueXY; op: Animated.Value; scale: Animated.Value };
 
 function makeBurstAnims(n: number): BurstAnim[] {
@@ -597,7 +721,6 @@ function burstAnimation(anims: BurstAnim[], n: number, spread: number, duration:
   );
 }
 
-/* ── 1連花火 (15%〜) ─── */
 function SingleFireworkEffect({ x, y }: { x: number; y: number }) {
   const N     = 16;
   const anims = useRef(makeBurstAnims(N)).current;
@@ -627,7 +750,6 @@ function SingleFireworkEffect({ x, y }: { x: number; y: number }) {
   );
 }
 
-/* ── 3連花火 (20%〜) ─── */
 function TripleFireworkEffect({ x, y }: { x: number; y: number }) {
   const N      = 15;
   const burst1 = useRef(makeBurstAnims(N)).current;
@@ -673,7 +795,6 @@ function TripleFireworkEffect({ x, y }: { x: number; y: number }) {
   );
 }
 
-/* ── ルーティング ─── */
 function BubbleEffect({ x, y, pct }: { x: number; y: number; pct: number }) {
   if (pct >= 20) return <TripleFireworkEffect x={x} y={y} />;
   if (pct >= 15) return <SingleFireworkEffect x={x} y={y} />;
@@ -703,6 +824,15 @@ function createStyles(c: ColorPalette) {
       borderBottomColor: c.separator,
     },
     title: { fontSize: FontSize.sm, fontWeight: '700', color: c.text, flex: 1 },
+    iconBtn: {
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+    },
+    iconBtnTxt: { fontSize: 13, color: c.textSecondary },
     compactBtn: {
       paddingHorizontal: 10,
       paddingVertical: 4,
@@ -712,6 +842,27 @@ function createStyles(c: ColorPalette) {
       backgroundColor: c.surface,
     },
     compactTxt: { fontSize: 11, fontWeight: '700', color: c.textSecondary },
+    periodRow: {
+      flexDirection: 'row',
+      gap: 6,
+      paddingHorizontal: Spacing.md,
+      paddingTop: 8,
+      paddingBottom: 2,
+    },
+    periodChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+    },
+    periodChipActive: {
+      borderColor: c.primary,
+      backgroundColor: c.primary + '20',
+    },
+    periodTxt: { fontSize: 12, fontWeight: '700', color: c.textTertiary },
+    periodTxtActive: { color: c.primary },
     filterRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -745,7 +896,6 @@ function createStyles(c: ColorPalette) {
     starName: { fontSize: FontSize.sm, fontWeight: '700', color: c.text },
     starRight: { alignItems: 'flex-end' },
     starPct: { fontSize: FontSize.md, fontWeight: '800' },
-    starRatio: { fontSize: 10, color: c.textTertiary },
     chartWrap: {
       flexDirection: 'row',
       paddingLeft: Spacing.sm,
@@ -831,5 +981,28 @@ function createStyles(c: ColorPalette) {
     },
     linkBtnPrimary: { borderColor: c.primaryDim },
     linkTxt: { fontSize: 11, fontWeight: '600', color: c.textSecondary },
+    // Fullscreen styles
+    fsContainer: {
+      flex: 1,
+      backgroundColor: '#000',
+    },
+    fsHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: Spacing.md,
+      paddingTop: 10,
+      paddingBottom: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: c.separator,
+    },
+    fsCloseBtn: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+    },
+    fsCloseTxt: { fontSize: 12, fontWeight: '700', color: c.textSecondary },
   });
 }

@@ -35,6 +35,9 @@ export interface Stock {
   week52High?: number;
   week52Low?: number;
   avgVolume20d?: number;
+  change7d?: number;
+  change30d?: number;
+  change365d?: number;
 }
 
 export interface NewsItem {
