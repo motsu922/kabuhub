@@ -457,24 +457,50 @@ export default function StockDetailScreen() {
           <Text style={styles.arrow}>→</Text>
         </TouchableOpacity>}
 
-        {/* External Links (JP only) */}
-        {stock.market !== 'US' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>外部サービス</Text>
-            <View style={styles.linkGrid}>
-              {EXTERNAL_SERVICES.map(({ key, label, icon }) => (
+        {/* External Links */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>外部サービス</Text>
+          <View style={styles.linkGrid}>
+            {stock.market !== 'US' ? (
+              <>
+                {EXTERNAL_SERVICES.map(({ key, label, icon }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={styles.linkCard}
+                    onPress={() => openExternal(ExternalLinks[key](stock.code))}
+                  >
+                    <Text style={styles.linkIcon}>{icon}</Text>
+                    <Text style={styles.linkLabel}>{label}</Text>
+                  </TouchableOpacity>
+                ))}
                 <TouchableOpacity
-                  key={key}
                   style={styles.linkCard}
-                  onPress={() => openExternal(ExternalLinks[key](stock.code))}
+                  onPress={() => openExternal(`https://x.com/search?q=${encodeURIComponent(stock.name + ' 株')}&f=live`)}
                 >
-                  <Text style={styles.linkIcon}>{icon}</Text>
-                  <Text style={styles.linkLabel}>{label}</Text>
+                  <Text style={styles.linkIcon}>𝕏</Text>
+                  <Text style={styles.linkLabel}>X検索</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              </>
+            ) : (
+              <>
+                <TouchableOpacity
+                  style={styles.linkCard}
+                  onPress={() => openExternal(ExternalLinks.yahooFinanceUS(stock.code))}
+                >
+                  <Text style={styles.linkIcon}>📊</Text>
+                  <Text style={styles.linkLabel}>Yahoo Finance</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.linkCard}
+                  onPress={() => openExternal(`https://x.com/search?q=${encodeURIComponent(stock.code + ' stock')}&f=live`)}
+                >
+                  <Text style={styles.linkIcon}>𝕏</Text>
+                  <Text style={styles.linkLabel}>X検索</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
-        )}
+        </View>
 
         {/* 意思・スタンス */}
         {inWatchlist && (() => {

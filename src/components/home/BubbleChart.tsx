@@ -459,9 +459,9 @@ function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelect
     : `$${stock.price.toFixed(2)}`;
 
   const links = isJP ? [
-    { label: 'Yahoo掲示板', onPress: () => Linking.openURL(`https://finance.yahoo.co.jp/cm/message/${stock.code}`) },
-    { label: '株探',        onPress: () => Linking.openURL(ExternalLinks.kabutan(stock.code)) },
-    { label: 'X検索',       onPress: () => Linking.openURL(`https://x.com/search?q=${encodeURIComponent(stock.name + ' 株')}&f=live`) },
+    { label: 'Yahoo!ファイナンス', onPress: () => Linking.openURL(ExternalLinks.yahooFinance(stock.code)) },
+    { label: '株探',               onPress: () => Linking.openURL(ExternalLinks.kabutan(stock.code)) },
+    { label: 'X検索',              onPress: () => Linking.openURL(`https://x.com/search?q=${encodeURIComponent(stock.name + ' 株')}&f=live`) },
   ] : [
     { label: 'Yahoo Finance', onPress: () => Linking.openURL(ExternalLinks.yahooFinanceUS(stock.code)) },
     { label: 'X検索',         onPress: () => Linking.openURL(`https://x.com/search?q=${encodeURIComponent(stock.code + ' stock')}&f=live`) },

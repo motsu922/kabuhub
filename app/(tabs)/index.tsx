@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
@@ -250,6 +251,7 @@ function SituationCard({ group, colors, onPressStock }: {
       {group.notifications.map((n) => {
         const pctMatch = n.message.match(/[+-][\d.]+%/)?.[0] ?? '';
         const detail = n.message.replace(/\(.*\)/, '').trim();
+        const xUrl = `https://x.com/search?q=${encodeURIComponent(n.stockName + ' 株')}&f=live`;
         return (
           <TouchableOpacity
             key={n.stockCode}
@@ -261,6 +263,13 @@ function SituationCard({ group, colors, onPressStock }: {
               <Text style={sStyles.stockName} numberOfLines={1}>{n.stockName}</Text>
               <Text style={sStyles.stockSub}>{n.stockCode}  {detail}</Text>
             </View>
+            <TouchableOpacity
+              style={sStyles.xBtn}
+              onPress={(e) => { e.stopPropagation(); Linking.openURL(xUrl); }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+            >
+              <Text style={sStyles.xBtnText}>𝕏</Text>
+            </TouchableOpacity>
             <View style={[sStyles.pctChip, { backgroundColor: accent + '18' }]}>
               <Text style={[sStyles.pctText, { color: accent }]}>{pctMatch}</Text>
             </View>
@@ -319,6 +328,15 @@ function createSituationStyles(c: ColorPalette) {
     rowLeft: { flex: 1, gap: 2 },
     stockName: { fontSize: FontSize.sm, fontWeight: '700', color: c.text },
     stockSub: { fontSize: FontSize.xs, color: c.textTertiary },
+    xBtn: {
+      paddingHorizontal: 7,
+      paddingVertical: 3,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+    },
+    xBtnText: { fontSize: 11, fontWeight: '700', color: c.textTertiary },
     pctChip: {
       paddingHorizontal: 8,
       paddingVertical: 3,
