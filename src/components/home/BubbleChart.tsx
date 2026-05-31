@@ -297,11 +297,11 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
                 );
               })}
 
-              {/* Fireworks: 持ってる & +10%以上 */}
+              {/* 持ってる銘柄エフェクト: 5%紙吹雪 / 10%花火 / 15%3連花火 */}
               {bubbles
-                .filter(b => b.group === 'holding' && b.pct >= 10)
+                .filter(b => b.group === 'holding' && b.pct >= 5)
                 .map(b => (
-                  <FireworkEffect key={`fw-${b.stock.code}`} x={b.x} y={b.y} />
+                  <BubbleEffect key={`eff-${b.stock.code}`} x={b.x} y={b.y} pct={b.pct} />
                 ))
               }
 
@@ -398,74 +398,188 @@ function Stat({ label, value, valueColor, colors }: {
   );
 }
 
-/* ── Firework Effect ─────────────────────────────────────────────────────── */
+/* ── Bubble Effects ──────────────────────────────────────────────────────── */
 
-const FW_COLORS = ['#FFD700', '#FF6B35', '#A8E063', '#56CCF2', '#FF69B4', '#FFA500', '#C084FC', '#FB7185'];
-const FW_N = 10;
+const CONFETTI_COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#CC5DE8','#F06595','#74C0FC','#51CF66','#FCC419'];
+const FW_COLORS       = ['#FFD700','#FF6B35','#A8E063','#56CCF2','#FF69B4','#FFA500','#C084FC','#FB7185','#FBBF24','#34D399','#60A5FA','#F87171'];
 
-function FireworkEffect({ x, y }: { x: number; y: number }) {
-  const anims = useRef(
-    Array.from({ length: FW_N }, () => ({
-      pos:     new Animated.ValueXY({ x: 0, y: 0 }),
-      opacity: new Animated.Value(0),
-      scale:   new Animated.Value(1),
+/* ── 紙吹雪 (5%〜) ─── */
+function ConfettiEffect({ x, y }: { x: number; y: number }) {
+  const N = 20;
+  const pieces = useRef(
+    Array.from({ length: N }, (_, i) => ({
+      tx:    new Animated.Value(0),
+      ty:    new Animated.Value(-20),
+      rot:   new Animated.Value(0),
+      op:    new Animated.Value(0),
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      wide:  i % 3 !== 0,
     }))
   ).current;
 
-  const burst = useCallback(() => {
-    anims.forEach(a => {
-      a.pos.setValue({ x: 0, y: 0 });
-      a.opacity.setValue(0);
-      a.scale.setValue(1);
+  const animate = useCallback(() => {
+    const anims = pieces.map(p => {
+      const sx  = (Math.random() - 0.5) * 56;
+      const ex  = sx + (Math.random() - 0.5) * 30;
+      const ey  = 70 + Math.random() * 35;
+      const dur = 2800 + Math.random() * 900;
+      const rot = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * 5);
+      p.tx.setValue(sx);
+      p.ty.setValue(-24 - Math.random() * 16);
+      p.rot.setValue(0);
+      p.op.setValue(1);
+      return Animated.parallel([
+        Animated.timing(p.ty,  { toValue: ey,  duration: dur, useNativeDriver: true }),
+        Animated.timing(p.tx,  { toValue: ex,  duration: dur, useNativeDriver: true }),
+        Animated.timing(p.rot, { toValue: rot, duration: dur, useNativeDriver: true }),
+        Animated.sequence([
+          Animated.timing(p.op, { toValue: 1, duration: dur * 0.65, useNativeDriver: true }),
+          Animated.timing(p.op, { toValue: 0, duration: dur * 0.35, useNativeDriver: true }),
+        ]),
+      ]);
     });
-    Animated.parallel(
-      anims.map((a, i) => {
-        const angle = (i / FW_N) * Math.PI * 2;
-        const dist  = 18 + Math.random() * 16;
-        const dx    = Math.cos(angle) * dist;
-        const dy    = Math.sin(angle) * dist - 10; // upward bias
-        return Animated.parallel([
-          Animated.timing(a.pos, { toValue: { x: dx, y: dy }, duration: 750, useNativeDriver: true }),
-          Animated.sequence([
-            Animated.timing(a.opacity, { toValue: 1, duration: 80,  useNativeDriver: true }),
-            Animated.timing(a.opacity, { toValue: 0, duration: 670, useNativeDriver: true }),
-          ]),
-          Animated.timing(a.scale,   { toValue: 0.2, duration: 750, useNativeDriver: true }),
-        ]);
-      })
-    ).start();
+    Animated.parallel(anims).start();
+  }, [pieces]);
+
+  useEffect(() => {
+    const t  = setTimeout(animate, Math.random() * 500);
+    const iv = setInterval(animate, 5500);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, [animate]);
+
+  return (
+    <View style={{ position: 'absolute', left: x, top: y }} pointerEvents="none">
+      {pieces.map((p, i) => {
+        const rotStr = p.rot.interpolate({ inputRange: [-10, 10], outputRange: ['-3600deg', '3600deg'] });
+        return (
+          <Animated.View key={i} style={{
+            position: 'absolute',
+            width: p.wide ? 8 : 5, height: p.wide ? 4 : 5,
+            borderRadius: 1,
+            backgroundColor: p.color,
+            left: p.wide ? -4 : -2.5, top: p.wide ? -2 : -2.5,
+            opacity: p.op,
+            transform: [{ translateX: p.tx }, { translateY: p.ty }, { rotate: rotStr }],
+          }} />
+        );
+      })}
+    </View>
+  );
+}
+
+/* ── 花火共通 ─── */
+type BurstAnim = { pos: Animated.ValueXY; op: Animated.Value; scale: Animated.Value };
+
+function makeBurstAnims(n: number): BurstAnim[] {
+  return Array.from({ length: n }, () => ({
+    pos:   new Animated.ValueXY({ x: 0, y: 0 }),
+    op:    new Animated.Value(0),
+    scale: new Animated.Value(0),
+  }));
+}
+
+function burstAnimation(anims: BurstAnim[], n: number, spread: number, duration: number) {
+  anims.forEach(a => { a.pos.setValue({ x: 0, y: 0 }); a.op.setValue(0); a.scale.setValue(1.4); });
+  return Animated.parallel(
+    anims.map((a, i) => {
+      const angle = (i / n) * Math.PI * 2 + (Math.random() - 0.5) * 0.6;
+      const dist  = spread * (0.6 + Math.random() * 0.8);
+      return Animated.parallel([
+        Animated.timing(a.pos, {
+          toValue: { x: Math.cos(angle) * dist, y: Math.sin(angle) * dist - spread * 0.35 },
+          duration, useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(a.op, { toValue: 1, duration: 130,             useNativeDriver: true }),
+          Animated.timing(a.op, { toValue: 0, duration: duration - 130,  useNativeDriver: true }),
+        ]),
+        Animated.timing(a.scale, { toValue: 0, duration, useNativeDriver: true }),
+      ]);
+    })
+  );
+}
+
+/* ── 1連花火 (10%〜) ─── */
+function SingleFireworkEffect({ x, y }: { x: number; y: number }) {
+  const N     = 14;
+  const anims = useRef(makeBurstAnims(N)).current;
+
+  const fire = useCallback(() => {
+    burstAnimation(anims, N, 32, 2000).start();
   }, [anims]);
 
   useEffect(() => {
-    const t  = setTimeout(burst, 300 + Math.random() * 500);
-    const iv = setInterval(burst, 3500);
+    const t  = setTimeout(fire, 300 + Math.random() * 600);
+    const iv = setInterval(fire, 5000);
     return () => { clearTimeout(t); clearInterval(iv); };
-  }, [burst]);
+  }, [fire]);
 
   return (
     <View style={{ position: 'absolute', left: x, top: y }} pointerEvents="none">
       {anims.map((a, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            position: 'absolute',
-            width: 5,
-            height: 5,
-            borderRadius: 2.5,
-            backgroundColor: FW_COLORS[i % FW_COLORS.length],
-            left: -2.5,
-            top: -2.5,
-            opacity: a.opacity,
-            transform: [
-              { translateX: a.pos.x },
-              { translateY: a.pos.y },
-              { scale: a.scale },
-            ],
-          }}
-        />
+        <Animated.View key={i} style={{
+          position: 'absolute', width: 7, height: 7, borderRadius: 3.5,
+          backgroundColor: FW_COLORS[i % FW_COLORS.length],
+          left: -3.5, top: -3.5,
+          opacity: a.op,
+          transform: [{ translateX: a.pos.x }, { translateY: a.pos.y }, { scale: a.scale }],
+        }} />
       ))}
     </View>
   );
+}
+
+/* ── 3連花火 (15%〜) ─── */
+function TripleFireworkEffect({ x, y }: { x: number; y: number }) {
+  const N      = 13;
+  const burst1 = useRef(makeBurstAnims(N)).current;
+  const burst2 = useRef(makeBurstAnims(N)).current;
+  const burst3 = useRef(makeBurstAnims(N)).current;
+
+  const fire = useCallback(() => {
+    Animated.sequence([
+      burstAnimation(burst1, N, 36, 1900),
+      Animated.delay(900),
+      burstAnimation(burst2, N, 36, 1900),
+      Animated.delay(900),
+      burstAnimation(burst3, N, 36, 1900),
+    ]).start();
+  }, [burst1, burst2, burst3]);
+
+  useEffect(() => {
+    const t  = setTimeout(fire, 200 + Math.random() * 400);
+    const iv = setInterval(fire, 7000);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, [fire]);
+
+  const allBursts = [
+    { anims: burst1, cols: FW_COLORS },
+    { anims: burst2, cols: FW_COLORS.slice().reverse() },
+    { anims: burst3, cols: FW_COLORS },
+  ];
+
+  return (
+    <View style={{ position: 'absolute', left: x, top: y }} pointerEvents="none">
+      {allBursts.map(({ anims, cols }, bi) =>
+        anims.map((a, i) => (
+          <Animated.View key={`${bi}-${i}`} style={{
+            position: 'absolute', width: 8, height: 8, borderRadius: 4,
+            backgroundColor: cols[i % cols.length],
+            left: -4, top: -4,
+            opacity: a.op,
+            transform: [{ translateX: a.pos.x }, { translateY: a.pos.y }, { scale: a.scale }],
+          }} />
+        ))
+      )}
+    </View>
+  );
+}
+
+/* ── ルーティング ─── */
+function BubbleEffect({ x, y, pct }: { x: number; y: number; pct: number }) {
+  if (pct >= 15) return <TripleFireworkEffect x={x} y={y} />;
+  if (pct >= 10) return <SingleFireworkEffect x={x} y={y} />;
+  return <ConfettiEffect x={x} y={y} />;
 }
 
 /* ── Styles ──────────────────────────────────────────────────────────────── */
