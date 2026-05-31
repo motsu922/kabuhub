@@ -17,7 +17,7 @@ const LAYOUT = {
 
 const Y_RANGE   = 10;   // ±10%
 const YAXIS_W   = 36;
-const SEC_LBL_H = 80;
+const SEC_LBL_H = 34;
 const Y_TICKS   = [10, 5, 0, -5, -10];
 
 function yPx(pct: number, chartH: number): number {
@@ -264,23 +264,12 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
                   {i > 0 && (
                     <View style={[s.colDiv, { left: i * L.colW, height: L.chartH }]} />
                   )}
-                  <View style={{
-                    position: 'absolute',
-                    left: i * L.colW,
-                    top: L.chartH + 4,
-                    width: L.colW,
-                    height: SEC_LBL_H - 4,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}>
-                    <Text
-                      style={[s.secLbl, { width: SEC_LBL_H - 4, transform: [{ rotate: '-90deg' }] }]}
-                      numberOfLines={1}
-                    >
-                      {sec}
-                    </Text>
-                  </View>
+                  <Text
+                    style={[s.secLbl, { left: i * L.colW, width: L.colW, top: L.chartH + 4 }]}
+                    numberOfLines={2}
+                  >
+                    {sec}
+                  </Text>
                 </React.Fragment>
               ))}
 
@@ -782,10 +771,12 @@ function createStyles(c: ColorPalette) {
       backgroundColor: 'rgba(255,255,255,0.10)',
     },
     secLbl: {
+      position: 'absolute',
       textAlign: 'center',
-      fontSize: 10,
+      fontSize: 9,
       fontWeight: '600',
       color: c.textSecondary,
+      lineHeight: 13,
     },
     bubble: {
       position: 'absolute',
