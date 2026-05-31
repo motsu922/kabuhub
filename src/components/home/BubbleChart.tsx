@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Animated,
   Modal, useWindowDimensions, SafeAreaView,
 } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
@@ -119,12 +120,23 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const [period, setPeriod]         = useState<Period>('1d');
   const [fullscreen, setFullscreen] = useState(false);
   const { effectsEnabled }          = useAppSettings();
-  const { height: screenH }         = useWindowDimensions();
+  const { width: screenW, height: screenH } = useWindowDimensions();
   const s = useMemo(() => createStyles(colors), [colors]);
 
+  // 全画面時に横向き ↔ 通常時に縦向き
+  useEffect(() => {
+    if (fullscreen) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    } else {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    }
+  }, [fullscreen]);
+
   const pcfg  = PERIOD_CONFIG[period];
+  // 全画面時はデバイスが横向きになるので screenW/screenH が入れ替わる
+  const fsChartH = Math.floor(Math.min(screenW, screenH) * 0.48);
   const L     = fullscreen
-    ? { ...LAYOUT.fullscreen, chartH: Math.floor(screenH * 0.52) }
+    ? { ...LAYOUT.fullscreen, chartH: fsChartH }
     : LAYOUT[compact ? 'compact' : 'normal'];
 
   const filtered = useMemo(() =>
@@ -162,12 +174,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
       return { stock: st, item, sector, pct, x, y, r, color, group: intentionGroup(item?.intention) };
     });
   }, [filtered, sectors, items, colors, L, period, pcfg.range]);
-
-  const star = useMemo(() => {
-    const pos = bubbles.filter(b => b.pct > 0);
-    if (!pos.length) return null;
-    return pos.reduce((best, b) => Math.abs(b.pct) > Math.abs(best.pct) ? b : best);
-  }, [bubbles]);
 
   const selected = bubbles.find(b => b.stock.code === selectedCode);
 
@@ -256,26 +262,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
 
       {controls(false)}
 
-      {/* 今日の主役 */}
-      {star && (
-        <TouchableOpacity
-          style={s.starBanner}
-          onPress={() => setSelected(star.stock.code)}
-          activeOpacity={0.8}
-        >
-          <Text style={s.starEmoji}>🔥</Text>
-          <View style={s.starMid}>
-            <Text style={s.starLabel}>今日の主役</Text>
-            <Text style={s.starName} numberOfLines={1}>{star.stock.name}</Text>
-          </View>
-          <View style={s.starRight}>
-            <Text style={[s.starPct, { color: star.pct >= 0 ? colors.positive : colors.negative }]}>
-              {star.pct >= 0 ? '+' : ''}{star.pct.toFixed(2)}%
-            </Text>
-          </View>
-        </TouchableOpacity>
-      )}
-
       {filtered.length === 0 ? (
         <View style={s.empty}>
           <Text style={s.emptyTxt}>表示できる銘柄がありません</Text>
@@ -312,25 +298,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
           </View>
 
           {controls(true)}
-
-          {star && (
-            <TouchableOpacity
-              style={s.starBanner}
-              onPress={() => setSelected(star.stock.code)}
-              activeOpacity={0.8}
-            >
-              <Text style={s.starEmoji}>🔥</Text>
-              <View style={s.starMid}>
-                <Text style={s.starLabel}>今日の主役</Text>
-                <Text style={s.starName} numberOfLines={1}>{star.stock.name}</Text>
-              </View>
-              <View style={s.starRight}>
-                <Text style={[s.starPct, { color: star.pct >= 0 ? colors.positive : colors.negative }]}>
-                  {star.pct >= 0 ? '+' : ''}{star.pct.toFixed(2)}%
-                </Text>
-              </View>
-            </TouchableOpacity>
-          )}
 
           {filtered.length === 0 ? (
             <View style={s.empty}>
@@ -878,24 +845,6 @@ function createStyles(c: ColorPalette) {
       borderColor: c.cardBorder,
     },
     chipTxt: { fontSize: 11, fontWeight: '600' },
-    starBanner: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      marginHorizontal: Spacing.md,
-      marginBottom: 8,
-      padding: 8,
-      backgroundColor: c.surface,
-      borderRadius: BorderRadius.sm,
-      borderWidth: 1,
-      borderColor: c.cardBorder,
-    },
-    starEmoji: { fontSize: 20 },
-    starMid: { flex: 1 },
-    starLabel: { fontSize: 10, color: c.textTertiary, fontWeight: '600' },
-    starName: { fontSize: FontSize.sm, fontWeight: '700', color: c.text },
-    starRight: { alignItems: 'flex-end' },
-    starPct: { fontSize: FontSize.md, fontWeight: '800' },
     chartWrap: {
       flexDirection: 'row',
       paddingLeft: Spacing.sm,

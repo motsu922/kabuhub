@@ -3,7 +3,7 @@
     "name": "KabuHub",
     "slug": "kabuhub",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -38,7 +38,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-share-intent"
+      "expo-share-intent",
+      "expo-screen-orientation"
     ],
     "extra": {
       "router": {
