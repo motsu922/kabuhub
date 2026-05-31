@@ -6,18 +6,18 @@ export const DarkColors = {
   card: '#111E30',
   cardBorder: '#1A2D45',
 
-  primary: '#F0B040',
-  primaryMuted: '#F0B04018',
-  primaryDim: '#F0B04055',
+  primary: '#00C8E8',
+  primaryMuted: '#00C8E818',
+  primaryDim: '#00C8E855',
 
   text: '#EDF2FF',
   textSecondary: '#7090B0',
   textTertiary: '#354860',
 
   statusNormal: '#22D47A',
-  statusWatch: '#F0B040',
+  statusWatch: '#00C8E8',
   statusAlert: '#F07040',
-  statusSurge: '#F0B040',
+  statusSurge: '#00C8E8',
 
   positive: '#22D47A',
   negative: '#F04060',
@@ -37,18 +37,18 @@ export const LightColors: ColorPalette = {
   card: '#FFFFFF',
   cardBorder: '#DDE4EF',
 
-  primary: '#C49020',
-  primaryMuted: '#C4902015',
-  primaryDim: '#C4902050',
+  primary: '#0090AA',
+  primaryMuted: '#0090AA15',
+  primaryDim: '#0090AA50',
 
   text: '#0A1628',
   textSecondary: '#3E5878',
   textTertiary: '#7A95B0',
 
   statusNormal: '#16A05A',
-  statusWatch: '#C49020',
+  statusWatch: '#0090AA',
   statusAlert: '#C05030',
-  statusSurge: '#C49020',
+  statusSurge: '#0090AA',
 
   positive: '#16A05A',
   negative: '#C82840',
