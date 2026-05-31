@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../src/contexts/ThemeContext';
 
@@ -45,23 +46,30 @@ export default function TabLayout() {
           right: 16,
           height: 76,
           borderRadius: 30,
-          backgroundColor: colors.card,
-          borderTopWidth: 1,
-          borderTopColor: colors.cardBorder,
+          backgroundColor: 'transparent',
+          borderTopWidth: 0,
           borderWidth: 1,
-          borderColor: colors.cardBorder,
+          borderColor: 'rgba(255,255,255,0.10)',
           paddingBottom: 0,
           paddingTop: 0,
+          overflow: 'hidden',
           ...Platform.select({
             ios: {
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.22,
-              shadowRadius: 18,
+              shadowOpacity: 0.35,
+              shadowRadius: 20,
             },
-            android: { elevation: 18 },
+            android: { elevation: 20 },
           }),
         },
+        tabBarBackground: () => (
+          <BlurView
+            intensity={70}
+            tint="dark"
+            style={StyleSheet.absoluteFill}
+          />
+        ),
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textTertiary,
       }}
@@ -93,9 +101,10 @@ export default function TabLayout() {
 const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 3,
-    paddingTop: 6,
     minWidth: 58,
+    flex: 1,
   },
   label: {
     fontSize: 11,

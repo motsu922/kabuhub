@@ -684,7 +684,7 @@ function BubbleEffect({ x, y, pct }: { x: number; y: number; pct: number }) {
 function createStyles(c: ColorPalette) {
   return StyleSheet.create({
     root: {
-      backgroundColor: c.card,
+      backgroundColor: '#000',
       borderRadius: BorderRadius.md,
       borderWidth: 1,
       borderColor: c.cardBorder,
@@ -759,14 +759,14 @@ function createStyles(c: ColorPalette) {
     grid: {
       position: 'absolute',
       height: StyleSheet.hairlineWidth,
-      backgroundColor: c.separator,
+      backgroundColor: 'rgba(255,255,255,0.08)',
     },
-    zeroLine: { backgroundColor: c.textTertiary, opacity: 0.5, height: 1 },
+    zeroLine: { backgroundColor: 'rgba(255,255,255,0.25)', height: 1 },
     colDiv: {
       position: 'absolute',
       top: 0,
       width: StyleSheet.hairlineWidth,
-      backgroundColor: c.separator,
+      backgroundColor: 'rgba(255,255,255,0.10)',
     },
     secLbl: {
       position: 'absolute',
