@@ -443,9 +443,65 @@ function Stat({ label, value, valueColor, colors }: {
 const CONFETTI_COLORS = ['#FF6B6B','#FFD93D','#6BCB77','#4D96FF','#FF922B','#CC5DE8','#F06595','#74C0FC','#51CF66','#FCC419'];
 const FW_COLORS       = ['#FFD700','#FF6B35','#A8E063','#56CCF2','#FF69B4','#FFA500','#C084FC','#FB7185','#FBBF24','#34D399','#60A5FA','#F87171'];
 
-/* ── 紙吹雪 (5%〜) ─── */
+/* ── 小さな輝き (5%〜) ── 控えめなキラキラ ─── */
+function SparkleEffect({ x, y }: { x: number; y: number }) {
+  const N = 7;
+  const pieces = useRef(
+    Array.from({ length: N }, (_, i) => ({
+      tx:    new Animated.Value(0),
+      ty:    new Animated.Value(0),
+      op:    new Animated.Value(0),
+      scale: new Animated.Value(0),
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    }))
+  ).current;
+
+  const animate = useCallback(() => {
+    const anims = pieces.map(p => {
+      const angle = Math.random() * Math.PI * 2;
+      const dist  = 10 + Math.random() * 12;
+      p.tx.setValue(0); p.ty.setValue(0); p.op.setValue(0); p.scale.setValue(0);
+      return Animated.sequence([
+        Animated.parallel([
+          Animated.timing(p.tx,    { toValue: Math.cos(angle) * dist, duration: 800, useNativeDriver: true }),
+          Animated.timing(p.ty,    { toValue: Math.sin(angle) * dist - 6, duration: 800, useNativeDriver: true }),
+          Animated.timing(p.scale, { toValue: 0.8, duration: 300, useNativeDriver: true }),
+          Animated.timing(p.op,    { toValue: 0.55, duration: 200, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(p.scale, { toValue: 0, duration: 500, useNativeDriver: true }),
+          Animated.timing(p.op,    { toValue: 0, duration: 500, useNativeDriver: true }),
+        ]),
+      ]);
+    });
+    Animated.parallel(anims).start();
+  }, [pieces]);
+
+  useEffect(() => {
+    const t  = setTimeout(animate, Math.random() * 800);
+    const iv = setInterval(animate, 7000);
+    return () => { clearTimeout(t); clearInterval(iv); };
+  }, [animate]);
+
+  return (
+    <View style={{ position: 'absolute', left: x, top: y }} pointerEvents="none">
+      {pieces.map((p, i) => (
+        <Animated.View key={i} style={{
+          position: 'absolute',
+          width: 5, height: 5, borderRadius: 2.5,
+          backgroundColor: p.color,
+          left: -2.5, top: -2.5,
+          opacity: p.op,
+          transform: [{ translateX: p.tx }, { translateY: p.ty }, { scale: p.scale }],
+        }} />
+      ))}
+    </View>
+  );
+}
+
+/* ── 紙吹雪 (10%〜) ─── */
 function ConfettiEffect({ x, y }: { x: number; y: number }) {
-  const N = 20;
+  const N = 14;
   const pieces = useRef(
     Array.from({ length: N }, (_, i) => ({
       tx:    new Animated.Value(0),
@@ -459,22 +515,22 @@ function ConfettiEffect({ x, y }: { x: number; y: number }) {
 
   const animate = useCallback(() => {
     const anims = pieces.map(p => {
-      const sx  = (Math.random() - 0.5) * 56;
-      const ex  = sx + (Math.random() - 0.5) * 30;
-      const ey  = 70 + Math.random() * 35;
-      const dur = 2800 + Math.random() * 900;
-      const rot = (Math.random() > 0.5 ? 1 : -1) * (4 + Math.random() * 5);
+      const sx  = (Math.random() - 0.5) * 44;
+      const ex  = sx + (Math.random() - 0.5) * 24;
+      const ey  = 55 + Math.random() * 25;
+      const dur = 2400 + Math.random() * 800;
+      const rot = (Math.random() > 0.5 ? 1 : -1) * (3 + Math.random() * 4);
       p.tx.setValue(sx);
-      p.ty.setValue(-24 - Math.random() * 16);
+      p.ty.setValue(-18 - Math.random() * 12);
       p.rot.setValue(0);
-      p.op.setValue(1);
+      p.op.setValue(0.75);
       return Animated.parallel([
         Animated.timing(p.ty,  { toValue: ey,  duration: dur, useNativeDriver: true }),
         Animated.timing(p.tx,  { toValue: ex,  duration: dur, useNativeDriver: true }),
         Animated.timing(p.rot, { toValue: rot, duration: dur, useNativeDriver: true }),
         Animated.sequence([
-          Animated.timing(p.op, { toValue: 1, duration: dur * 0.65, useNativeDriver: true }),
-          Animated.timing(p.op, { toValue: 0, duration: dur * 0.35, useNativeDriver: true }),
+          Animated.timing(p.op, { toValue: 0.75, duration: dur * 0.6, useNativeDriver: true }),
+          Animated.timing(p.op, { toValue: 0,    duration: dur * 0.4, useNativeDriver: true }),
         ]),
       ]);
     });
@@ -482,7 +538,7 @@ function ConfettiEffect({ x, y }: { x: number; y: number }) {
   }, [pieces]);
 
   useEffect(() => {
-    const t  = setTimeout(animate, Math.random() * 500);
+    const t  = setTimeout(animate, Math.random() * 600);
     const iv = setInterval(animate, 5500);
     return () => { clearTimeout(t); clearInterval(iv); };
   }, [animate]);
@@ -494,10 +550,10 @@ function ConfettiEffect({ x, y }: { x: number; y: number }) {
         return (
           <Animated.View key={i} style={{
             position: 'absolute',
-            width: p.wide ? 8 : 5, height: p.wide ? 4 : 5,
+            width: p.wide ? 7 : 4, height: p.wide ? 3.5 : 4,
             borderRadius: 1,
             backgroundColor: p.color,
-            left: p.wide ? -4 : -2.5, top: p.wide ? -2 : -2.5,
+            left: p.wide ? -3.5 : -2, top: p.wide ? -1.75 : -2,
             opacity: p.op,
             transform: [{ translateX: p.tx }, { translateY: p.ty }, { rotate: rotStr }],
           }} />
@@ -539,13 +595,13 @@ function burstAnimation(anims: BurstAnim[], n: number, spread: number, duration:
   );
 }
 
-/* ── 1連花火 (10%〜) ─── */
+/* ── 1連花火 (15%〜) ─── */
 function SingleFireworkEffect({ x, y }: { x: number; y: number }) {
-  const N     = 14;
+  const N     = 16;
   const anims = useRef(makeBurstAnims(N)).current;
 
   const fire = useCallback(() => {
-    burstAnimation(anims, N, 32, 2000).start();
+    burstAnimation(anims, N, 36, 2200).start();
   }, [anims]);
 
   useEffect(() => {
@@ -569,20 +625,20 @@ function SingleFireworkEffect({ x, y }: { x: number; y: number }) {
   );
 }
 
-/* ── 3連花火 (15%〜) ─── */
+/* ── 3連花火 (20%〜) ─── */
 function TripleFireworkEffect({ x, y }: { x: number; y: number }) {
-  const N      = 13;
+  const N      = 15;
   const burst1 = useRef(makeBurstAnims(N)).current;
   const burst2 = useRef(makeBurstAnims(N)).current;
   const burst3 = useRef(makeBurstAnims(N)).current;
 
   const fire = useCallback(() => {
     Animated.sequence([
-      burstAnimation(burst1, N, 36, 1900),
+      burstAnimation(burst1, N, 40, 2100),
       Animated.delay(900),
-      burstAnimation(burst2, N, 36, 1900),
+      burstAnimation(burst2, N, 40, 2100),
       Animated.delay(900),
-      burstAnimation(burst3, N, 36, 1900),
+      burstAnimation(burst3, N, 40, 2100),
     ]).start();
   }, [burst1, burst2, burst3]);
 
@@ -617,9 +673,10 @@ function TripleFireworkEffect({ x, y }: { x: number; y: number }) {
 
 /* ── ルーティング ─── */
 function BubbleEffect({ x, y, pct }: { x: number; y: number; pct: number }) {
-  if (pct >= 15) return <TripleFireworkEffect x={x} y={y} />;
-  if (pct >= 10) return <SingleFireworkEffect x={x} y={y} />;
-  return <ConfettiEffect x={x} y={y} />;
+  if (pct >= 20) return <TripleFireworkEffect x={x} y={y} />;
+  if (pct >= 15) return <SingleFireworkEffect x={x} y={y} />;
+  if (pct >= 10) return <ConfettiEffect x={x} y={y} />;
+  return <SparkleEffect x={x} y={y} />;
 }
 
 /* ── Styles ──────────────────────────────────────────────────────────────── */
