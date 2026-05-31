@@ -13,6 +13,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useWindowDimensions } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { Stock, OHLCBar, AlertSettings, UserIntention, NewsItem } from '../../src/types';
@@ -477,7 +478,9 @@ export default function StockDetailScreen() {
                   style={styles.linkCard}
                   onPress={() => openExternal(`https://x.com/search?q=${encodeURIComponent(stock.name + ' 株')}&f=live`)}
                 >
-                  <Text style={styles.linkIcon}>𝕏</Text>
+                  <View style={styles.xIconWrap}>
+                    <FontAwesome6 name="x-twitter" brand size={20} color="#fff" />
+                  </View>
                   <Text style={styles.linkLabel}>X検索</Text>
                 </TouchableOpacity>
               </>
@@ -494,7 +497,9 @@ export default function StockDetailScreen() {
                   style={styles.linkCard}
                   onPress={() => openExternal(`https://x.com/search?q=${encodeURIComponent(stock.code + ' stock')}&f=live`)}
                 >
-                  <Text style={styles.linkIcon}>𝕏</Text>
+                  <View style={styles.xIconWrap}>
+                    <FontAwesome6 name="x-twitter" brand size={20} color="#fff" />
+                  </View>
                   <Text style={styles.linkLabel}>X検索</Text>
                 </TouchableOpacity>
               </>
@@ -900,6 +905,16 @@ const styles = StyleSheet.create({
     borderColor: Colors.cardBorder,
   },
   linkIcon: { fontSize: 24 },
+  xIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    backgroundColor: '#000',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   linkLabel: {
     fontSize: FontSize.xs,
     color: Colors.textSecondary,

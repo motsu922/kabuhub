@@ -4,6 +4,7 @@ import {
   Modal, useWindowDimensions, SafeAreaView,
 } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
@@ -458,13 +459,15 @@ function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelect
     ? `¥${stock.price.toLocaleString('ja-JP')}`
     : `$${stock.price.toFixed(2)}`;
 
+  const xUrl = isJP
+    ? `https://x.com/search?q=${encodeURIComponent(stock.name + ' 株')}&f=live`
+    : `https://x.com/search?q=${encodeURIComponent(stock.code + ' stock')}&f=live`;
+
   const links = isJP ? [
     { label: 'Yahoo!ファイナンス', onPress: () => Linking.openURL(ExternalLinks.yahooFinance(stock.code)) },
     { label: '株探',               onPress: () => Linking.openURL(ExternalLinks.kabutan(stock.code)) },
-    { label: 'X検索',              onPress: () => Linking.openURL(`https://x.com/search?q=${encodeURIComponent(stock.name + ' 株')}&f=live`) },
   ] : [
     { label: 'Yahoo Finance', onPress: () => Linking.openURL(ExternalLinks.yahooFinanceUS(stock.code)) },
-    { label: 'X検索',         onPress: () => Linking.openURL(`https://x.com/search?q=${encodeURIComponent(stock.code + ' stock')}&f=live`) },
   ];
 
   return (
@@ -515,6 +518,9 @@ function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelect
             <Text style={s.linkTxt}>{l.label}</Text>
           </TouchableOpacity>
         ))}
+        <TouchableOpacity style={s.xIconBtn} onPress={() => Linking.openURL(xUrl)}>
+          <FontAwesome6 name="x-twitter" brand size={15} color="#fff" />
+        </TouchableOpacity>
         <TouchableOpacity style={[s.linkBtn, s.linkBtnPrimary]} onPress={onNavigate}>
           <Text style={[s.linkTxt, { color: colors.primary }]}>詳細 →</Text>
         </TouchableOpacity>
@@ -930,6 +936,16 @@ function createStyles(c: ColorPalette) {
     },
     linkBtnPrimary: { borderColor: c.primaryDim },
     linkTxt: { fontSize: 11, fontWeight: '600', color: c.textSecondary },
+    xIconBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: '#000',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.18)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
     // Fullscreen styles
     fsContainer: {
       flex: 1,

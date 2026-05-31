@@ -9,6 +9,7 @@ import {
   Linking,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
+import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { useRouter } from 'expo-router';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -268,7 +269,7 @@ function SituationCard({ group, colors, onPressStock }: {
               onPress={(e) => { e.stopPropagation(); Linking.openURL(xUrl); }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
             >
-              <Text style={sStyles.xBtnText}>𝕏</Text>
+              <FontAwesome6 name="x-twitter" brand size={13} color="#fff" />
             </TouchableOpacity>
             <View style={[sStyles.pctChip, { backgroundColor: accent + '18' }]}>
               <Text style={[sStyles.pctText, { color: accent }]}>{pctMatch}</Text>
@@ -329,14 +330,15 @@ function createSituationStyles(c: ColorPalette) {
     stockName: { fontSize: FontSize.sm, fontWeight: '700', color: c.text },
     stockSub: { fontSize: FontSize.xs, color: c.textTertiary },
     xBtn: {
-      paddingHorizontal: 7,
-      paddingVertical: 3,
-      borderRadius: BorderRadius.sm,
+      width: 28,
+      height: 28,
+      borderRadius: 7,
+      backgroundColor: '#000',
       borderWidth: 1,
-      borderColor: c.cardBorder,
-      backgroundColor: c.surface,
+      borderColor: 'rgba(255,255,255,0.15)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
-    xBtnText: { fontSize: 11, fontWeight: '700', color: c.textTertiary },
     pctChip: {
       paddingHorizontal: 8,
       paddingVertical: 3,
