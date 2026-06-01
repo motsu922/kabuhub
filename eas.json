@@ -7,7 +7,7 @@
     "preview": {
       "channel": "main",
       "ios": {
-        "distribution": "internal",
+        "distribution": "store",
         "autoIncrement": true
       }
     },
