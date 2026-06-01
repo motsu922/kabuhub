@@ -4,8 +4,15 @@
     "appVersionSource": "local"
   },
   "build": {
+    "preview": {
+      "channel": "main",
+      "ios": {
+        "distribution": "internal",
+        "autoIncrement": true
+      }
+    },
     "production": {
-      "channel": "production",
+      "channel": "main",
       "ios": {
         "distribution": "store",
         "autoIncrement": true
