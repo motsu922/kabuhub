@@ -13,7 +13,7 @@ import {
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
-import { fetchStockCandidates, YouTubeTranscriptError, XUrlError } from '../../src/services/stockExtraction';
+import { fetchStockCandidates, XUrlError } from '../../src/services/stockExtraction';
 import { StockCandidateCard } from '../../src/components/discover/StockCandidateCard';
 import { PaywallModal } from '../../src/components/common/PaywallModal';
 import { SubscriptionService, FREE_AI_WEEKLY_LIMIT } from '../../src/services/subscriptionService';
@@ -86,16 +86,7 @@ export default function ArticlesScreen() {
       }
     } catch (e) {
       setExtractionStage('');
-      if (e instanceof YouTubeTranscriptError) {
-        Alert.alert(
-          '字幕を取得できませんでした',
-          'この動画は字幕が無効または非公開です。\n\nYouTubeアプリ → 動画下の「...」→「文字起こしを表示」からテキストをコピーして貼り付けてください。',
-          [
-            { text: 'テキストモードへ', onPress: () => { setInputMode('text'); setInput(''); } },
-            { text: 'キャンセル', style: 'cancel' },
-          ]
-        );
-      } else if (e instanceof XUrlError) {
+      if (e instanceof XUrlError) {
         Alert.alert(
           'X(Twitter)のURLは読み込めません',
           'ポストのテキストをコピーして、テキストモードで貼り付けてください。',
@@ -152,8 +143,8 @@ export default function ArticlesScreen() {
 
         <Text style={styles.hintText}>
           {inputMode === 'url'
-            ? 'YouTube・X・ニュース記事のURLを貼り付け'
-            : 'YouTube文字起こし・Xポスト・記事文章などを貼り付け'}
+            ? 'X・ニュース記事のURLを貼り付け'
+            : 'Xポスト・記事文章などを貼り付け'}
         </Text>
 
         {/* 入力欄 */}
@@ -224,7 +215,7 @@ export default function ArticlesScreen() {
             <Text style={styles.emptySymbol}>◈</Text>
             <Text style={styles.emptyTitle}>銘柄を抽出しよう</Text>
             <Text style={styles.emptyText}>
-              YouTube・X・ニュース記事のURLやテキストを貼り付けると、言及された銘柄を自動でリストアップします
+              X・ニュース記事のURLやテキストを貼り付けると、言及された銘柄を自動でリストアップします
             </Text>
             <View style={styles.emptyTip}>
               <Text style={styles.emptyTipText}>iOSのシェアボタン → KabuHub でも送れます</Text>

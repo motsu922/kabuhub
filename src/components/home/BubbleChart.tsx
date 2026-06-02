@@ -13,11 +13,11 @@ import { useAppSettings } from '../../contexts/SettingsContext';
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
 type Period = '1d' | '7d' | '30d' | '365d';
 
-const PERIOD_CONFIG: Record<Period, { range: number; ticks: number[]; label: string }> = {
-  '1d':   { range: 10,  ticks: [10, 5, 0, -5, -10],          label: '1日' },
-  '7d':   { range: 20,  ticks: [20, 10, 0, -10, -20],         label: '7日' },
-  '30d':  { range: 40,  ticks: [40, 20, 0, -20, -40],         label: '30日' },
-  '365d': { range: 100, ticks: [100, 50, 0, -50, -100],       label: '365日' },
+const PERIOD_CONFIG: Record<Period, { label: string }> = {
+  '1d':   { label: '1日' },
+  '7d':   { label: '7日' },
+  '30d':  { label: '30日' },
+  '365d': { label: '365日' },
 };
 
 const LAYOUT = {
@@ -124,16 +124,27 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const s = useMemo(() => createStyles(colors), [colors]);
 
-  // 全画面時に横向き ↔ 通常時に縦向き
+  // 全画面時に横向き ↔ 通常時に縦向き（native module が未ロードの場合も安全に）
   useEffect(() => {
-    if (fullscreen) {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-    } else {
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-    }
+    try {
+      if (fullscreen) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+      } else {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+      }
+    } catch (_) {}
   }, [fullscreen]);
 
-  const pcfg  = PERIOD_CONFIG[period];
+  const dynamicRange = useMemo(() => {
+    if (!filtered.length) return { range: 10, ticks: [10, 5, 0, -5, -10] };
+    const maxAbs = Math.max(...filtered.map(st => Math.abs(getPct(st, period))), 0.1);
+    const niceRanges = [5, 8, 10, 15, 20, 30, 40, 50, 75, 100];
+    const range = niceRanges.find(r => r >= maxAbs) ?? 100;
+    const step = range <= 10 ? 5 : range <= 20 ? 10 : range <= 50 ? 10 : range <= 75 ? 25 : 50;
+    const ticks: number[] = [];
+    for (let t = range; t >= -range; t -= step) ticks.push(t);
+    return { range, ticks };
+  }, [filtered, period]);
   // 全画面時はデバイスが横向きになるので screenW/screenH が入れ替わる
   const fsChartH = Math.floor(Math.min(screenW, screenH) * 0.48);
   const L     = fullscreen
@@ -168,13 +179,13 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
       const sector = deriveSector(st, item);
       const pct    = getPct(st, period);
       const r      = L.minR + (rawSizes[idx] / maxSize) * (L.maxR - L.minR);
-      const yRaw   = yPx(pct, pcfg.range, L.chartH);
+      const yRaw   = yPx(pct, dynamicRange.range, L.chartH);
       const y      = Math.max(r + 2, Math.min(L.chartH - r - 2, yRaw));
       const x      = sectors.indexOf(sector) * L.colW + L.colW / 2;
       const color  = pct > 0.5 ? colors.positive : pct < -0.5 ? colors.negative : colors.neutral;
       return { stock: st, item, sector, pct, x, y, r, color, group: intentionGroup(item?.intention) };
     });
-  }, [filtered, sectors, items, colors, L, period, pcfg.range]);
+  }, [filtered, sectors, items, colors, L, dynamicRange]);
 
   const selected = bubbles.find(b => b.stock.code === selectedCode);
 
@@ -198,7 +209,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
       bubbles={bubbles}
       sectors={sectors}
       L={L}
-      pcfg={pcfg}
+      dynamicRange={dynamicRange}
       chartW={chartW}
       colors={colors}
       s={s}
@@ -327,13 +338,13 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
 /* ── Chart canvas (shared between normal and fullscreen) ─────────────────── */
 
 function ChartCanvas({
-  bubbles, sectors, L, pcfg, chartW, colors, s,
+  bubbles, sectors, L, dynamicRange, chartW, colors, s,
   selectedCode, setSelected, effectsEnabled,
 }: {
   bubbles: Bubble[];
   sectors: string[];
   L: { chartH: number; colW: number; minR: number; maxR: number };
-  pcfg: { range: number; ticks: number[]; label: string };
+  dynamicRange: { range: number; ticks: number[] };
   chartW: number;
   colors: ColorPalette;
   s: ReturnType<typeof createStyles>;
@@ -346,8 +357,8 @@ function ChartCanvas({
     <View style={s.chartWrap}>
       {/* Y-axis labels */}
       <View style={{ width: YAXIS_W, height: L.chartH, position: 'relative' }}>
-        {pcfg.ticks.map(tick => (
-          <Text key={tick} style={[s.yTick, { top: yPx(tick, pcfg.range, L.chartH) - 8 }]}>
+        {dynamicRange.ticks.map(tick => (
+          <Text key={tick} style={[s.yTick, { top: yPx(tick, dynamicRange.range, L.chartH) - 8 }]}>
             {tick > 0 ? '+' : ''}{tick}%
           </Text>
         ))}
@@ -358,12 +369,12 @@ function ChartCanvas({
         <View style={{ width: chartW, height: L.chartH + SEC_LBL_H }}>
 
           {/* Grid lines */}
-          {pcfg.ticks.map(tick => (
+          {dynamicRange.ticks.map(tick => (
             <View
               key={tick}
               style={[
                 s.grid,
-                { top: yPx(tick, pcfg.range, L.chartH), width: chartW },
+                { top: yPx(tick, dynamicRange.range, L.chartH), width: chartW },
                 tick === 0 && s.zeroLine,
               ]}
             />
@@ -465,7 +476,6 @@ function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelect
 
   const links = isJP ? [
     { label: 'Yahoo!ファイナンス', onPress: () => Linking.openURL(ExternalLinks.yahooFinance(stock.code)) },
-    { label: '株探',               onPress: () => Linking.openURL(ExternalLinks.kabutan(stock.code)) },
   ] : [
     { label: 'Yahoo Finance', onPress: () => Linking.openURL(ExternalLinks.yahooFinanceUS(stock.code)) },
   ];
