@@ -18,7 +18,6 @@ import { StockCandidateCard } from '../../src/components/discover/StockCandidate
 import { PaywallModal } from '../../src/components/common/PaywallModal';
 import { SubscriptionService, FREE_AI_WEEKLY_LIMIT } from '../../src/services/subscriptionService';
 import { StockCandidate } from '../../src/types';
-import { useShareIntent } from 'expo-share-intent';
 
 type InputMode = 'url' | 'text';
 
@@ -26,7 +25,6 @@ export default function ArticlesScreen() {
   const { colors } = useTheme();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
-  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
   const { isInWatchlist, addStock } = useWatchlist();
   const [inputMode, setInputMode] = useState<InputMode>('url');
   const [input, setInput] = useState('');
@@ -40,18 +38,6 @@ export default function ArticlesScreen() {
   useEffect(() => {
     SubscriptionService.getAIUsageThisWeek().then(setAiUsageThisWeek);
   }, []);
-
-  useEffect(() => {
-    if (hasShareIntent && shareIntent?.webUrl) {
-      setInputMode('url');
-      setInput(shareIntent.webUrl);
-      resetShareIntent();
-    } else if (hasShareIntent && shareIntent?.text) {
-      setInputMode('text');
-      setInput(shareIntent.text);
-      resetShareIntent();
-    }
-  }, [hasShareIntent, shareIntent]);
 
   const handleExtract = async () => {
     const trimmed = input.trim();

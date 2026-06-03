@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kabuhub.app",
-      "buildNumber": "9",
+      "buildNumber": "11",
       "runtimeVersion": {
         "policy": "appVersion"
       },
@@ -38,7 +38,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-share-intent"
+      "expo-notifications"
     ],
     "extra": {
       "router": {
