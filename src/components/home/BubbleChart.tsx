@@ -123,16 +123,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const { width: screenW, height: screenH } = useWindowDimensions();
   const s = useMemo(() => createStyles(colors), [colors]);
 
-  const dynamicRange = useMemo(() => {
-    if (!filtered.length) return { range: 10, ticks: [10, 5, 0, -5, -10] };
-    const maxAbs = Math.max(...filtered.map(st => Math.abs(getPct(st, period))), 0.1);
-    const niceRanges = [5, 8, 10, 15, 20, 30, 40, 50, 75, 100];
-    const range = niceRanges.find(r => r >= maxAbs) ?? 100;
-    const step = range <= 10 ? 5 : range <= 20 ? 10 : range <= 50 ? 10 : range <= 75 ? 25 : 50;
-    const ticks: number[] = [];
-    for (let t = range; t >= -range; t -= step) ticks.push(t);
-    return { range, ticks };
-  }, [filtered, period]);
   // 全画面時はデバイスが横向きになるので screenW/screenH が入れ替わる
   const fsChartH = Math.floor(Math.min(screenW, screenH) * 0.48);
   const L     = fullscreen
@@ -146,6 +136,18 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
     }),
     [stocks, items, filter]
   );
+
+  // filtered の後に宣言すること（filtered を依存配列・本体で参照するため）
+  const dynamicRange = useMemo(() => {
+    if (!filtered.length) return { range: 10, ticks: [10, 5, 0, -5, -10] };
+    const maxAbs = Math.max(...filtered.map(st => Math.abs(getPct(st, period))), 0.1);
+    const niceRanges = [5, 8, 10, 15, 20, 30, 40, 50, 75, 100];
+    const range = niceRanges.find(r => r >= maxAbs) ?? 100;
+    const step = range <= 10 ? 5 : range <= 20 ? 10 : range <= 50 ? 10 : range <= 75 ? 25 : 50;
+    const ticks: number[] = [];
+    for (let t = range; t >= -range; t -= step) ticks.push(t);
+    return { range, ticks };
+  }, [filtered, period]);
 
   const sectors = useMemo(() => {
     const set = new Set(filtered.map(st => {
