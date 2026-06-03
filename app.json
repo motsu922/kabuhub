@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kabuhub.app",
-      "buildNumber": "5",
+      "buildNumber": "7",
       "runtimeVersion": {
         "policy": "appVersion"
       },
@@ -49,6 +49,7 @@
       }
     },
     "updates": {
+      "enabled": false,
       "url": "https://u.expo.dev/268aa00c-373a-4a8f-8664-7b0102f9b907",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
