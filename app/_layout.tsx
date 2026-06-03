@@ -2,7 +2,6 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider } from 'expo-share-intent';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
 import { SettingsProvider } from '../src/contexts/SettingsContext';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
@@ -29,7 +28,6 @@ function AppStack() {
 export default function RootLayout() {
   useEffect(() => {
     RemoteLinkConfig.init();
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
   }, []);
 
   return (

@@ -38,8 +38,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-share-intent",
-      "expo-screen-orientation"
+      "expo-share-intent"
     ],
     "extra": {
       "router": {
