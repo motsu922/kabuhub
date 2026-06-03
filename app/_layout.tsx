@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { ShareIntentProvider } from 'expo-share-intent';
 import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
 import { SettingsProvider } from '../src/contexts/SettingsContext';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
@@ -32,7 +33,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SettingsProvider>
-        <AppStack />
+        <ShareIntentProvider>
+          <AppStack />
+        </ShareIntentProvider>
       </SettingsProvider>
     </ThemeProvider>
   );

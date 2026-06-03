@@ -6,7 +6,7 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "scheme": "kabuhub",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kabuhub.app",
-      "buildNumber": "11",
+      "buildNumber": "13",
       "runtimeVersion": {
         "policy": "appVersion"
       },
@@ -38,6 +38,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-share-intent",
       "expo-notifications"
     ],
     "extra": {
@@ -49,7 +50,6 @@
       }
     },
     "updates": {
-      "enabled": false,
       "url": "https://u.expo.dev/268aa00c-373a-4a8f-8664-7b0102f9b907",
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 0
