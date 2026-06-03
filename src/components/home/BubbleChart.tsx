@@ -3,7 +3,6 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Animated,
   Modal, useWindowDimensions, SafeAreaView,
 } from 'react-native';
-import * as ScreenOrientation from 'expo-screen-orientation';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
 import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
@@ -123,17 +122,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const { effectsEnabled }          = useAppSettings();
   const { width: screenW, height: screenH } = useWindowDimensions();
   const s = useMemo(() => createStyles(colors), [colors]);
-
-  // 全画面時に横向き ↔ 通常時に縦向き（native module が未ロードの場合も安全に）
-  useEffect(() => {
-    try {
-      if (fullscreen) {
-        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-      } else {
-        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-      }
-    } catch (_) {}
-  }, [fullscreen]);
 
   const dynamicRange = useMemo(() => {
     if (!filtered.length) return { range: 10, ticks: [10, 5, 0, -5, -10] };
