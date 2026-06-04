@@ -11,7 +11,6 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import QRCode from 'react-native-qrcode-svg';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
@@ -43,6 +42,15 @@ const PERIOD_OPTIONS: { key: BubbleChartPeriod; label: string }[] = [
   { key: '365d', label: '365日' },
 ];
 
+type CameraPermissionResponse = { granted: boolean };
+type CameraModule = {
+  CameraView: React.ComponentType<any>;
+  requestCameraPermissionsAsync?: () => Promise<CameraPermissionResponse>;
+  Camera?: {
+    requestCameraPermissionsAsync?: () => Promise<CameraPermissionResponse>;
+  };
+};
+
 function extractSyncIdFromQr(data: string): string | null {
   const raw = data.trim();
   const direct = raw.match(/kh-[a-z0-9]{5}-[a-z0-9]{5}/i)?.[0];
@@ -62,7 +70,6 @@ export default function SettingsScreen() {
   const { colors, theme, toggleTheme } = useTheme();
   const { effectsEnabled, setEffectsEnabled } = useAppSettings();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [syncId, setSyncId] = useState('');
@@ -71,6 +78,7 @@ export default function SettingsScreen() {
   const [isQrVisible, setIsQrVisible] = useState(false);
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [hasScannedQr, setHasScannedQr] = useState(false);
+  const [cameraModule, setCameraModule] = useState<CameraModule | null>(null);
 
   useEffect(() => {
     StorageService.getSettings().then(setSettings);
@@ -172,7 +180,27 @@ export default function SettingsScreen() {
   };
 
   const openQrScanner = async () => {
-    const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+    let nextCameraModule = cameraModule;
+    if (!nextCameraModule) {
+      try {
+        nextCameraModule = require('expo-camera') as CameraModule;
+        setCameraModule(nextCameraModule);
+      } catch {
+        Alert.alert('読み取りは次回ビルド後に使えます', 'QR読み取りにはカメラ機能を含む新しいTestFlightビルドが必要です');
+        return;
+      }
+    }
+
+    const requestPermission =
+      nextCameraModule.requestCameraPermissionsAsync ??
+      nextCameraModule.Camera?.requestCameraPermissionsAsync;
+    let permission: CameraPermissionResponse;
+    try {
+      permission = requestPermission ? await requestPermission() : { granted: false };
+    } catch {
+      Alert.alert('読み取りは次回ビルド後に使えます', 'QR読み取りにはカメラ機能を含む新しいTestFlightビルドが必要です');
+      return;
+    }
     if (!permission.granted) {
       Alert.alert('カメラ許可が必要です', '同期IDのQRを読み取るにはカメラへのアクセスを許可してください');
       return;
@@ -181,7 +209,7 @@ export default function SettingsScreen() {
     setIsScannerVisible(true);
   };
 
-  const handleQrScanned = ({ data }: BarcodeScanningResult) => {
+  const handleQrScanned = ({ data }: { data: string }) => {
     if (hasScannedQr) return;
     setHasScannedQr(true);
 
@@ -197,6 +225,8 @@ export default function SettingsScreen() {
     setIsScannerVisible(false);
     Alert.alert('同期IDを読み取りました', nextSyncId);
   };
+
+  const ScannerCamera = cameraModule?.CameraView;
 
   const checkCloudData = async () => {
     const normalized = CloudSyncService.normalizeSyncId(syncId);
@@ -534,23 +564,25 @@ export default function SettingsScreen() {
 
       <Modal visible={isScannerVisible} animationType="slide" onRequestClose={() => setIsScannerVisible(false)}>
         <View style={styles.scannerContainer}>
-          <CameraView
-            style={styles.scannerCamera}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={hasScannedQr ? undefined : handleQrScanned}
-          >
-            <View style={styles.scannerOverlay}>
-              <View style={styles.scannerTopBar}>
-                <Text style={styles.scannerTitle}>同期IDを読み取り</Text>
-                <TouchableOpacity style={styles.scannerCloseButton} onPress={() => setIsScannerVisible(false)}>
-                  <Text style={styles.scannerCloseText}>閉じる</Text>
-                </TouchableOpacity>
+          {ScannerCamera && (
+            <ScannerCamera
+              style={styles.scannerCamera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={hasScannedQr ? undefined : handleQrScanned}
+            >
+              <View style={styles.scannerOverlay}>
+                <View style={styles.scannerTopBar}>
+                  <Text style={styles.scannerTitle}>同期IDを読み取り</Text>
+                  <TouchableOpacity style={styles.scannerCloseButton} onPress={() => setIsScannerVisible(false)}>
+                    <Text style={styles.scannerCloseText}>閉じる</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.scannerFrame} />
+                <Text style={styles.scannerHint}>別端末に表示したKabuHub同期IDのQRを枠内に合わせてください</Text>
               </View>
-              <View style={styles.scannerFrame} />
-              <Text style={styles.scannerHint}>別端末に表示したKabuHub同期IDのQRを枠内に合わせてください</Text>
-            </View>
-          </CameraView>
+            </ScannerCamera>
+          )}
         </View>
       </Modal>
     </SafeAreaView>
