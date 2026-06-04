@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import * as Updates from 'expo-updates';
@@ -29,11 +29,12 @@ function AppStack() {
 
 function ShareIntentRouteHandler() {
   const router = useRouter();
+  const rootNavigationState = useRootNavigationState();
   const { hasShareIntent, shareIntent } = useShareIntentContext();
   const lastHandled = useRef('');
 
   useEffect(() => {
-    if (!hasShareIntent) return;
+    if (!hasShareIntent || !rootNavigationState?.key) return;
 
     const signature = [
       shareIntent.webUrl ?? '',
@@ -44,7 +45,7 @@ function ShareIntentRouteHandler() {
     if (!signature || signature === lastHandled.current) return;
     lastHandled.current = signature;
     router.replace('/(tabs)/articles');
-  }, [hasShareIntent, router, shareIntent.files, shareIntent.text, shareIntent.webUrl]);
+  }, [hasShareIntent, rootNavigationState?.key, router, shareIntent.files, shareIntent.text, shareIntent.webUrl]);
 
   return null;
 }
