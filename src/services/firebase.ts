@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -12,4 +12,12 @@ const firebaseConfig = {
 
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
-export const db = getFirestore(app);
+export const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+    });
+  } catch {
+    return getFirestore(app);
+  }
+})();

@@ -151,8 +151,11 @@ export default function SettingsScreen() {
         meta ? 'クラウドデータがあります' : 'クラウドデータなし',
         meta?.updatedAt ? `最終保存: ${new Date(meta.updatedAt).toLocaleString('ja-JP')}` : 'この同期IDのデータはまだありません'
       );
-    } catch {
-      Alert.alert('確認できませんでした', '通信状態またはFirestore設定を確認してください');
+    } catch (error) {
+      Alert.alert(
+        '確認できませんでした',
+        `通信状態またはFirestore設定を確認してください。\n\n${CloudSyncService.formatError(error)}`
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -170,8 +173,11 @@ export default function SettingsScreen() {
       const meta = await CloudSyncService.upload(normalized);
       setCloudUpdatedAt(meta.updatedAt);
       Alert.alert('保存しました', 'この端末のウォッチリスト・設定・保存記事をクラウドへ保存しました');
-    } catch {
-      Alert.alert('保存できませんでした', '通信状態またはFirestore設定を確認してください');
+    } catch (error) {
+      Alert.alert(
+        '保存できませんでした',
+        `通信状態またはFirestore設定を確認してください。\n\n${CloudSyncService.formatError(error)}`
+      );
     } finally {
       setIsSyncing(false);
     }
@@ -199,8 +205,11 @@ export default function SettingsScreen() {
               setSettings(nextSettings);
               setCloudUpdatedAt(meta.updatedAt);
               Alert.alert('復元しました', 'クラウドのデータをこの端末へ反映しました');
-            } catch (e) {
-              Alert.alert('復元できませんでした', '同期IDまたはFirestore設定を確認してください');
+            } catch (error) {
+              Alert.alert(
+                '復元できませんでした',
+                `同期IDまたはFirestore設定を確認してください。\n\n${CloudSyncService.formatError(error)}`
+              );
             } finally {
               setIsSyncing(false);
             }

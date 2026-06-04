@@ -27,9 +27,18 @@ function syncDoc(syncId: string) {
   return doc(db, COLLECTION, syncId);
 }
 
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    const code = 'code' in error && typeof error.code === 'string' ? error.code : error.name;
+    return `${code}: ${error.message}`;
+  }
+  return 'UNKNOWN_ERROR';
+}
+
 export const CloudSyncService = {
   generateSyncId,
   normalizeSyncId,
+  formatError,
 
   async upload(syncIdInput: string): Promise<CloudSyncMeta> {
     const syncId = normalizeSyncId(syncIdInput);
