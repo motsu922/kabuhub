@@ -8,6 +8,60 @@ const KEYS = {
   stocks: 'stocks_cache',
 } as const;
 
+export const DEFAULT_SETTINGS: UserSettings = {
+  securitiesApp: null,
+  notificationsEnabled: true,
+  notificationTypes: {
+    surge: true,
+    plunge: true,
+    dip: true,
+    consecutiveDecline: true,
+    volume: false,
+  },
+  notificationThresholdPercent: 5,
+  refreshInterval: '1m',
+  refreshOnAppActive: true,
+  clipboardDetection: {
+    enabled: true,
+    onAppActive: true,
+    types: {
+      youtube: true,
+      twitter: true,
+      url: true,
+      text: true,
+    },
+  },
+  bubbleChart: {
+    showOnHome: true,
+    defaultPeriod: '1d',
+    compactDefault: false,
+  },
+};
+
+function normalizeSettings(settings: Partial<UserSettings> | null): UserSettings {
+  const source = settings ?? {};
+  return {
+    ...DEFAULT_SETTINGS,
+    ...source,
+    notificationTypes: {
+      ...DEFAULT_SETTINGS.notificationTypes,
+      ...source.notificationTypes,
+    },
+    clipboardDetection: {
+      ...DEFAULT_SETTINGS.clipboardDetection,
+      ...source.clipboardDetection,
+      types: {
+        ...DEFAULT_SETTINGS.clipboardDetection.types,
+        ...source.clipboardDetection?.types,
+      },
+    },
+    bubbleChart: {
+      ...DEFAULT_SETTINGS.bubbleChart,
+      ...source.bubbleChart,
+    },
+  };
+}
+
 export const StorageService = {
   async getWatchlist(): Promise<WatchlistItem[]> {
     const raw = await AsyncStorage.getItem(KEYS.watchlist);
@@ -97,11 +151,16 @@ export const StorageService = {
 
   async getSettings(): Promise<UserSettings> {
     const raw = await AsyncStorage.getItem(KEYS.settings);
-    return raw ? JSON.parse(raw) : { securitiesApp: null, notificationsEnabled: true };
+    return normalizeSettings(raw ? JSON.parse(raw) : null);
   },
 
   async saveSettings(settings: UserSettings): Promise<void> {
-    await AsyncStorage.setItem(KEYS.settings, JSON.stringify(settings));
+    await AsyncStorage.setItem(KEYS.settings, JSON.stringify(normalizeSettings(settings)));
+  },
+
+  async resetSettings(): Promise<UserSettings> {
+    await AsyncStorage.setItem(KEYS.settings, JSON.stringify(DEFAULT_SETTINGS));
+    return DEFAULT_SETTINGS;
   },
 
   async getCachedStocks(): Promise<Stock[]> {
@@ -113,5 +172,13 @@ export const StorageService = {
 
   async cacheStocks(stocks: Stock[]): Promise<void> {
     await AsyncStorage.setItem(KEYS.stocks, JSON.stringify(stocks));
+  },
+
+  async clearStockCache(): Promise<void> {
+    await AsyncStorage.removeItem(KEYS.stocks);
+  },
+
+  async clearArticles(): Promise<void> {
+    await AsyncStorage.removeItem(KEYS.articles);
   },
 };

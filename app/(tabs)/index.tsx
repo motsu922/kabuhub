@@ -8,14 +8,15 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { SwipeableStockCard } from '../../src/components/watchlist/SwipeableStockCard';
 import { SkeletonCard } from '../../src/components/common/SkeletonCard';
 import { BubbleChart } from '../../src/components/home/BubbleChart';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
-import { Stock, Notification, WatchlistItem } from '../../src/types';
+import { Stock, Notification, UserSettings, WatchlistItem } from '../../src/types';
+import { StorageService } from '../../src/services/storage';
 
 function consecutiveDeclineDays(closes: number[]): number {
   if (closes.length < 2) return 0;
@@ -73,10 +74,21 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors, theme } = useTheme();
   const { stocks, items, isLoading, lastUpdatedAt, getItem, updateIntention, refresh } = useWatchlist();
+  const [settings, setSettings] = React.useState<UserSettings | null>(null);
 
   const notifications = generateNotifications(stocks, items);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const styles = React.useMemo(() => createStyles(colors), [colors]);
+
+  React.useEffect(() => {
+    StorageService.getSettings().then(setSettings);
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      StorageService.getSettings().then(setSettings);
+    }, [])
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -135,12 +147,14 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {stocks.length > 0 && (
+        {stocks.length > 0 && settings?.bubbleChart.showOnHome !== false && (
           <BubbleChart
             stocks={stocks}
             items={items}
             colors={colors}
             onPressStock={(code) => router.push(`/stock/${code}`)}
+            initialPeriod={settings?.bubbleChart.defaultPeriod}
+            initialCompact={settings?.bubbleChart.compactDefault}
           />
         )}
 

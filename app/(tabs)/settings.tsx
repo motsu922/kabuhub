@@ -12,9 +12,9 @@ import {
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { useAppSettings } from '../../src/contexts/SettingsContext';
-import { StorageService } from '../../src/services/storage';
+import { DEFAULT_SETTINGS, StorageService } from '../../src/services/storage';
 import { SecuritiesAppLinks } from '../../src/constants/externalLinks';
-import { UserSettings, SecuritiesApp } from '../../src/types';
+import { BubbleChartPeriod, RefreshInterval, SecuritiesApp, UserSettings } from '../../src/types';
 
 const BUILD_TIMESTAMP = '2026-05-28 00:00';
 
@@ -22,24 +22,63 @@ const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string; desc: string }[] =
   { key: 'ispeed', name: 'iSPEED', desc: '楽天証券' },
 ];
 
+const REFRESH_OPTIONS: { key: RefreshInterval; label: string }[] = [
+  { key: 'manual', label: '手動' },
+  { key: '1m', label: '1分' },
+  { key: '3m', label: '3分' },
+  { key: '5m', label: '5分' },
+];
+
+const THRESHOLD_OPTIONS = [3, 5, 10];
+
+const PERIOD_OPTIONS: { key: BubbleChartPeriod; label: string }[] = [
+  { key: '1d', label: '1日' },
+  { key: '7d', label: '7日' },
+  { key: '30d', label: '30日' },
+  { key: '365d', label: '365日' },
+];
+
 export default function SettingsScreen() {
   const { colors, theme, toggleTheme } = useTheme();
   const { effectsEnabled, setEffectsEnabled } = useAppSettings();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
-  const [settings, setSettings] = useState<UserSettings>({
-    securitiesApp: null,
-    notificationsEnabled: true,
-  });
+  const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {
     StorageService.getSettings().then(setSettings);
   }, []);
 
-  const updateApp = async (app: SecuritiesApp | null) => {
-    const next = { ...settings, securitiesApp: app };
+  const saveSettings = async (next: UserSettings) => {
     setSettings(next);
     await StorageService.saveSettings(next);
+  };
+
+  const updateApp = async (app: SecuritiesApp | null) => {
+    await saveSettings({ ...settings, securitiesApp: app });
+  };
+
+  const toggleNotificationType = async (key: keyof UserSettings['notificationTypes']) => {
+    await saveSettings({
+      ...settings,
+      notificationTypes: {
+        ...settings.notificationTypes,
+        [key]: !settings.notificationTypes[key],
+      },
+    });
+  };
+
+  const toggleClipboardType = async (key: keyof UserSettings['clipboardDetection']['types']) => {
+    await saveSettings({
+      ...settings,
+      clipboardDetection: {
+        ...settings.clipboardDetection,
+        types: {
+          ...settings.clipboardDetection.types,
+          [key]: !settings.clipboardDetection.types[key],
+        },
+      },
+    });
   };
 
   const testOpenApp = async () => {
@@ -60,96 +99,221 @@ export default function SettingsScreen() {
     }
   };
 
+  const clearStockCache = () => {
+    Alert.alert('株価キャッシュを削除', '保存済みの株価キャッシュを削除します。ウォッチリストは残ります。', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '削除', style: 'destructive', onPress: () => StorageService.clearStockCache() },
+    ]);
+  };
+
+  const clearArticles = () => {
+    Alert.alert('保存記事を削除', '保存した記事データをすべて削除します。', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '削除', style: 'destructive', onPress: () => StorageService.clearArticles() },
+    ]);
+  };
+
+  const resetSettings = () => {
+    Alert.alert('設定を初期化', 'テーマ以外の設定を初期状態に戻します。', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '初期化',
+        style: 'destructive',
+        onPress: async () => {
+          const next = await StorageService.resetSettings();
+          setSettings(next);
+          setEffectsEnabled(true);
+        },
+      },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>設定</Text>
 
-        {/* テーマ */}
         <SectionHeader title="テーマ" styles={styles} />
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={toggleTheme} activeOpacity={0.7}>
             <View style={styles.rowLeft}>
-              <Text style={styles.rowTitle}>
-                {theme === 'dark' ? '🌙 ダーク' : '☀️ ライト'}
-              </Text>
-              <Text style={styles.rowDesc}>タップで切り替え</Text>
+              <Text style={styles.rowTitle}>{theme === 'dark' ? 'ダーク' : 'ライト'}</Text>
+              <Text style={styles.rowDesc}>タップで表示テーマを切り替え</Text>
             </View>
-            <View style={[styles.themeSwitch, { backgroundColor: theme === 'dark' ? colors.surface : colors.primaryMuted, borderColor: theme === 'dark' ? colors.cardBorder : colors.primary }]}>
-              <Text style={styles.themeSwitchIcon}>{theme === 'dark' ? '🌙' : '☀️'}</Text>
-            </View>
+            <Text style={styles.rowValue}>{theme === 'dark' ? 'Dark' : 'Light'}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* エフェクト */}
+        <View style={styles.spacer} />
+        <SectionHeader title="通知" styles={styles} />
+        <View style={styles.card}>
+          <ToggleRow
+            title="通知"
+            desc="ウォッチ銘柄の条件通知"
+            value={settings.notificationsEnabled}
+            onPress={() => saveSettings({ ...settings, notificationsEnabled: !settings.notificationsEnabled })}
+            styles={styles}
+            colors={colors}
+          />
+          <View style={styles.rowBorder} />
+          <MultiChoiceRow
+            title="変動率しきい値"
+            desc="急騰・急落として扱う変動幅"
+            options={THRESHOLD_OPTIONS.map((n) => ({ key: String(n), label: `${n}%` }))}
+            selected={String(settings.notificationThresholdPercent)}
+            onSelect={(key) => saveSettings({ ...settings, notificationThresholdPercent: Number(key) })}
+            styles={styles}
+          />
+          <View style={styles.divider} />
+          <ToggleRow title="急騰" desc="しきい値以上の上昇" value={settings.notificationTypes.surge} onPress={() => toggleNotificationType('surge')} styles={styles} colors={colors} compact />
+          <ToggleRow title="急落" desc="しきい値以上の下落" value={settings.notificationTypes.plunge} onPress={() => toggleNotificationType('plunge')} styles={styles} colors={colors} compact />
+          <ToggleRow title="押し目" desc="軽めの下落候補" value={settings.notificationTypes.dip} onPress={() => toggleNotificationType('dip')} styles={styles} colors={colors} compact />
+          <ToggleRow title="続落" desc="連続下落の検出" value={settings.notificationTypes.consecutiveDecline} onPress={() => toggleNotificationType('consecutiveDecline')} styles={styles} colors={colors} compact />
+          <ToggleRow title="出来高急増" desc="今後の拡張用" value={settings.notificationTypes.volume} onPress={() => toggleNotificationType('volume')} styles={styles} colors={colors} compact />
+        </View>
+
+        <View style={styles.spacer} />
+        <SectionHeader title="データ更新" styles={styles} />
+        <View style={styles.card}>
+          <MultiChoiceRow
+            title="自動更新"
+            desc="フォアグラウンド中の更新間隔"
+            options={REFRESH_OPTIONS.map((o) => ({ key: o.key, label: o.label }))}
+            selected={settings.refreshInterval}
+            onSelect={(key) => saveSettings({ ...settings, refreshInterval: key as RefreshInterval })}
+            styles={styles}
+          />
+          <View style={styles.rowBorder} />
+          <ToggleRow
+            title="復帰時に更新"
+            desc="アプリを開き直した時に即更新"
+            value={settings.refreshOnAppActive}
+            onPress={() => saveSettings({ ...settings, refreshOnAppActive: !settings.refreshOnAppActive })}
+            styles={styles}
+            colors={colors}
+          />
+        </View>
+
+        <View style={styles.spacer} />
+        <SectionHeader title="クリップボード検出" styles={styles} />
+        <View style={styles.card}>
+          <ToggleRow
+            title="検出を有効化"
+            desc="コピーしたURLや文章を銘柄抽出へ送る"
+            value={settings.clipboardDetection.enabled}
+            onPress={() => saveSettings({
+              ...settings,
+              clipboardDetection: { ...settings.clipboardDetection, enabled: !settings.clipboardDetection.enabled },
+            })}
+            styles={styles}
+            colors={colors}
+          />
+          <View style={styles.rowBorder} />
+          <ToggleRow
+            title="復帰時にチェック"
+            desc="アプリに戻った時だけ確認"
+            value={settings.clipboardDetection.onAppActive}
+            onPress={() => saveSettings({
+              ...settings,
+              clipboardDetection: { ...settings.clipboardDetection, onAppActive: !settings.clipboardDetection.onAppActive },
+            })}
+            styles={styles}
+            colors={colors}
+          />
+          <View style={styles.divider} />
+          <ToggleRow title="YouTube" desc="動画URL" value={settings.clipboardDetection.types.youtube} onPress={() => toggleClipboardType('youtube')} styles={styles} colors={colors} compact />
+          <ToggleRow title="X" desc="ポストURL" value={settings.clipboardDetection.types.twitter} onPress={() => toggleClipboardType('twitter')} styles={styles} colors={colors} compact />
+          <ToggleRow title="Web記事" desc="一般URL" value={settings.clipboardDetection.types.url} onPress={() => toggleClipboardType('url')} styles={styles} colors={colors} compact />
+          <ToggleRow title="長文テキスト" desc="50文字以上の文章" value={settings.clipboardDetection.types.text} onPress={() => toggleClipboardType('text')} styles={styles} colors={colors} compact />
+        </View>
+
         <View style={styles.spacer} />
         <SectionHeader title="バブルチャート" styles={styles} />
         <View style={styles.card}>
-          <TouchableOpacity
-            style={styles.row}
+          <ToggleRow
+            title="ホームに表示"
+            desc="ウォッチ銘柄をバブルで俯瞰"
+            value={settings.bubbleChart.showOnHome}
+            onPress={() => saveSettings({
+              ...settings,
+              bubbleChart: { ...settings.bubbleChart, showOnHome: !settings.bubbleChart.showOnHome },
+            })}
+            styles={styles}
+            colors={colors}
+          />
+          <View style={styles.rowBorder} />
+          <ToggleRow
+            title="エフェクト"
+            desc="花火・紙吹雪などのアニメーション"
+            value={effectsEnabled}
             onPress={() => setEffectsEnabled(!effectsEnabled)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.rowLeft}>
-              <Text style={styles.rowTitle}>🎆 エフェクト</Text>
-              <Text style={styles.rowDesc}>
-                花火・紙吹雪などのアニメーション
-              </Text>
-            </View>
-            <View style={[
-              styles.toggleTrack,
-              { backgroundColor: effectsEnabled ? colors.primary : colors.surface,
-                borderColor: effectsEnabled ? colors.primary : colors.cardBorder },
-            ]}>
-              <View style={[
-                styles.toggleThumb,
-                { transform: [{ translateX: effectsEnabled ? 18 : 0 }],
-                  backgroundColor: effectsEnabled ? '#06090F' : colors.textTertiary },
-              ]} />
-            </View>
-          </TouchableOpacity>
+            styles={styles}
+            colors={colors}
+          />
+          <View style={styles.rowBorder} />
+          <ToggleRow
+            title="コンパクトで開始"
+            desc="小さめの表示密度で開く"
+            value={settings.bubbleChart.compactDefault}
+            onPress={() => saveSettings({
+              ...settings,
+              bubbleChart: { ...settings.bubbleChart, compactDefault: !settings.bubbleChart.compactDefault },
+            })}
+            styles={styles}
+            colors={colors}
+          />
+          <View style={styles.divider} />
+          <MultiChoiceRow
+            title="初期期間"
+            desc="最初に選ばれるパフォーマンス期間"
+            options={PERIOD_OPTIONS.map((o) => ({ key: o.key, label: o.label }))}
+            selected={settings.bubbleChart.defaultPeriod}
+            onSelect={(key) => saveSettings({
+              ...settings,
+              bubbleChart: { ...settings.bubbleChart, defaultPeriod: key as BubbleChartPeriod },
+            })}
+            styles={styles}
+          />
         </View>
 
-        {/* 証券アプリ */}
         <View style={styles.spacer} />
         <SectionHeader title="証券アプリ" styles={styles} />
         <Text style={styles.sectionDesc}>ワンタップで起動する証券アプリを選択</Text>
-
         <View style={styles.card}>
           {SECURITIES_OPTIONS.map((opt, i) => (
             <TouchableOpacity
               key={opt.key}
               style={[
                 styles.row,
-                i < SECURITIES_OPTIONS.length - 1 && styles.rowBorder,
+                i < SECURITIES_OPTIONS.length - 1 && styles.rowBottomLine,
                 settings.securitiesApp === opt.key && styles.rowSelected,
               ]}
               onPress={() => updateApp(settings.securitiesApp === opt.key ? null : opt.key)}
             >
               <View style={styles.rowLeft}>
-                <Text style={[styles.rowTitle, settings.securitiesApp === opt.key && styles.rowTitleSelected]}>
-                  {opt.name}
-                </Text>
+                <Text style={[styles.rowTitle, settings.securitiesApp === opt.key && styles.rowTitleSelected]}>{opt.name}</Text>
                 <Text style={styles.rowDesc}>{opt.desc}</Text>
               </View>
-              {settings.securitiesApp === opt.key && (
-                <View style={styles.checkBadge}>
-                  <Text style={styles.checkText}>✓</Text>
-                </View>
-              )}
+              {settings.securitiesApp === opt.key && <Text style={styles.checkText}>✓</Text>}
             </TouchableOpacity>
           ))}
         </View>
-
         {settings.securitiesApp && (
           <TouchableOpacity style={styles.actionBtn} onPress={testOpenApp}>
-            <Text style={styles.actionBtnText}>
-              {SecuritiesAppLinks[settings.securitiesApp].name} を開く
-            </Text>
+            <Text style={styles.actionBtnText}>{SecuritiesAppLinks[settings.securitiesApp].name} を開く</Text>
           </TouchableOpacity>
         )}
 
-        {/* 免責事項 */}
+        <View style={styles.spacer} />
+        <SectionHeader title="データ管理" styles={styles} />
+        <View style={styles.card}>
+          <ActionRow title="株価キャッシュを削除" desc="表示データを次回再取得" onPress={clearStockCache} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title="保存記事を削除" desc="銘柄抽出で保存した記事データ" onPress={clearArticles} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title="設定を初期化" desc="通知・更新・表示設定を初期状態へ" onPress={resetSettings} styles={styles} destructive />
+        </View>
+
         <View style={styles.spacer} />
         <SectionHeader title="免責事項" styles={styles} />
         <View style={styles.disclaimerCard}>
@@ -160,7 +324,6 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* バージョン */}
         <View style={styles.versionRow}>
           <Text style={styles.versionLabel}>KabuHub v1.0.0</Text>
           <Text style={styles.versionText}>{BUILD_TIMESTAMP}</Text>
@@ -176,6 +339,93 @@ function SectionHeader({ title, styles }: { title: string; styles: ReturnType<ty
       <View style={styles.sectionAccent} />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
+  );
+}
+
+function ToggleRow({
+  title, desc, value, onPress, styles, colors, compact,
+}: {
+  title: string;
+  desc: string;
+  value: boolean;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+  colors: ColorPalette;
+  compact?: boolean;
+}) {
+  return (
+    <TouchableOpacity style={[styles.row, compact && styles.compactRow]} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.rowLeft}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={styles.rowDesc}>{desc}</Text>
+      </View>
+      <View style={[
+        styles.toggleTrack,
+        {
+          backgroundColor: value ? colors.primary : colors.surface,
+          borderColor: value ? colors.primary : colors.cardBorder,
+        },
+      ]}>
+        <View style={[
+          styles.toggleThumb,
+          {
+            transform: [{ translateX: value ? 18 : 0 }],
+            backgroundColor: value ? '#06090F' : colors.textTertiary,
+          },
+        ]} />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+function MultiChoiceRow({
+  title, desc, options, selected, onSelect, styles,
+}: {
+  title: string;
+  desc: string;
+  options: { key: string; label: string }[];
+  selected: string;
+  onSelect: (key: string) => void;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <View style={styles.choiceBlock}>
+      <View style={styles.rowLeft}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        <Text style={styles.rowDesc}>{desc}</Text>
+      </View>
+      <View style={styles.choiceRow}>
+        {options.map((option) => (
+          <TouchableOpacity
+            key={option.key}
+            style={[styles.choiceChip, selected === option.key && styles.choiceChipActive]}
+            onPress={() => onSelect(option.key)}
+          >
+            <Text style={[styles.choiceText, selected === option.key && styles.choiceTextActive]}>{option.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function ActionRow({
+  title, desc, onPress, styles, destructive,
+}: {
+  title: string;
+  desc: string;
+  onPress: () => void;
+  styles: ReturnType<typeof createStyles>;
+  destructive?: boolean;
+}) {
+  return (
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.rowLeft}>
+        <Text style={[styles.rowTitle, destructive && styles.destructiveText]}>{title}</Text>
+        <Text style={styles.rowDesc}>{desc}</Text>
+      </View>
+      <Text style={[styles.chevron, destructive && styles.destructiveText]}>›</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -223,19 +473,33 @@ function createStyles(c: ColorPalette) {
       marginBottom: Spacing.sm,
     },
     row: {
+      minHeight: 64,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-      padding: Spacing.md,
+      gap: Spacing.md,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
     },
+    compactRow: { minHeight: 54 },
     rowBorder: {
+      height: 1,
+      backgroundColor: c.separator,
+      marginLeft: Spacing.md,
+    },
+    rowBottomLine: {
       borderBottomWidth: 1,
       borderBottomColor: c.separator,
+    },
+    divider: {
+      height: 1,
+      backgroundColor: c.cardBorder,
+      marginVertical: Spacing.xs,
     },
     rowSelected: {
       backgroundColor: c.primaryMuted,
     },
-    rowLeft: { gap: 2 },
+    rowLeft: { flex: 1, gap: 2 },
     rowTitle: {
       fontSize: FontSize.md,
       fontWeight: '600',
@@ -245,6 +509,12 @@ function createStyles(c: ColorPalette) {
     rowDesc: {
       fontSize: FontSize.xs,
       color: c.textTertiary,
+      lineHeight: 16,
+    },
+    rowValue: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: c.primary,
     },
     toggleTrack: {
       width: 44,
@@ -259,28 +529,47 @@ function createStyles(c: ColorPalette) {
       height: 20,
       borderRadius: 10,
     },
-    themeSwitch: {
-      width: 40,
-      height: 40,
-      borderRadius: BorderRadius.sm,
+    choiceBlock: {
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    choiceRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    choiceChip: {
+      minHeight: 34,
+      justifyContent: 'center',
+      borderRadius: BorderRadius.full,
+      paddingHorizontal: Spacing.md,
       borderWidth: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
     },
-    themeSwitchIcon: { fontSize: 20 },
-    checkBadge: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+    choiceChipActive: {
       backgroundColor: c.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
+      borderColor: c.primary,
     },
-    checkText: {
-      fontSize: 13,
-      fontWeight: '800',
+    choiceText: {
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+      color: c.textSecondary,
+    },
+    choiceTextActive: {
       color: '#06090F',
     },
+    checkText: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: c.primary,
+    },
+    chevron: {
+      fontSize: 24,
+      color: c.textTertiary,
+      lineHeight: 28,
+    },
+    destructiveText: { color: c.negative },
     actionBtn: {
       backgroundColor: c.primary,
       borderRadius: BorderRadius.md,

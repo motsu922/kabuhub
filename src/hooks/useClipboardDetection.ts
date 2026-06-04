@@ -9,6 +9,12 @@ export interface ClipboardDetection {
   content: string;
 }
 
+interface ClipboardOptions {
+  enabled?: boolean;
+  onAppActive?: boolean;
+  types?: Partial<Record<ClipboardType, boolean>>;
+}
+
 function detectType(text: string): ClipboardType | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
@@ -29,7 +35,9 @@ function detectType(text: string): ClipboardType | null {
   return null;
 }
 
-export function useClipboardDetection(enabled = true) {
+export function useClipboardDetection(options: ClipboardOptions | boolean = true) {
+  const config: ClipboardOptions = typeof options === 'boolean' ? { enabled: options } : options;
+  const enabled = config.enabled !== false;
   const [detection, setDetection] = useState<ClipboardDetection | null>(null);
   const lastChecked = useRef<string>('');
 
@@ -40,9 +48,9 @@ export function useClipboardDetection(enabled = true) {
       if (!text || text === lastChecked.current) return;
       lastChecked.current = text;
       const type = detectType(text);
-      if (type) setDetection({ type, content: text.trim() });
+      if (type && config.types?.[type] !== false) setDetection({ type, content: text.trim() });
     } catch {}
-  }, [enabled]);
+  }, [enabled, config.types]);
 
   const dismiss = useCallback(() => {
     setDetection(null);
@@ -55,13 +63,13 @@ export function useClipboardDetection(enabled = true) {
   }, [detection]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || config.onAppActive === false) return;
     // フォアグラウンド復帰時にチェック
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
       if (state === 'active') check();
     });
     return () => sub.remove();
-  }, [check, enabled]);
+  }, [check, enabled, config.onAppActive]);
 
   return { detection, dismiss, consume };
 }

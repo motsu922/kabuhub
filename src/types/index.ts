@@ -87,9 +87,37 @@ export interface MarketIndex {
 
 export type SecuritiesApp = 'ispeed';
 
+export type RefreshInterval = 'manual' | '1m' | '3m' | '5m';
+export type BubbleChartPeriod = '1d' | '7d' | '30d' | '365d';
+
 export interface UserSettings {
   securitiesApp: SecuritiesApp | null;
   notificationsEnabled: boolean;
+  notificationTypes: {
+    surge: boolean;
+    plunge: boolean;
+    dip: boolean;
+    consecutiveDecline: boolean;
+    volume: boolean;
+  };
+  notificationThresholdPercent: number;
+  refreshInterval: RefreshInterval;
+  refreshOnAppActive: boolean;
+  clipboardDetection: {
+    enabled: boolean;
+    onAppActive: boolean;
+    types: {
+      youtube: boolean;
+      twitter: boolean;
+      url: boolean;
+      text: boolean;
+    };
+  };
+  bubbleChart: {
+    showOnHome: boolean;
+    defaultPeriod: BubbleChartPeriod;
+    compactDefault: boolean;
+  };
 }
 
 export interface StockCandidate {

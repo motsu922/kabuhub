@@ -4,14 +4,14 @@ import {
   Modal, useWindowDimensions, SafeAreaView,
 } from 'react-native';
 import FontAwesome6 from '@expo/vector-icons/FontAwesome6';
-import { Stock, WatchlistItem, UserIntention } from '../../types';
+import { BubbleChartPeriod, Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
 import { useAppSettings } from '../../contexts/SettingsContext';
 import * as ScreenOrientation from 'expo-screen-orientation';
 
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
-type Period = '1d' | '7d' | '30d' | '365d';
+type Period = BubbleChartPeriod;
 
 const PERIOD_CONFIG: Record<Period, { label: string }> = {
   '1d':   { label: '1日' },
@@ -112,13 +112,15 @@ interface Props {
   items: WatchlistItem[];
   colors: ColorPalette;
   onPressStock: (code: string) => void;
+  initialPeriod?: Period;
+  initialCompact?: boolean;
 }
 
-export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
-  const [compact, setCompact]       = useState(false);
+export function BubbleChart({ stocks, items, colors, onPressStock, initialPeriod = '1d', initialCompact = false }: Props) {
+  const [compact, setCompact]       = useState(initialCompact);
   const [filter, setFilter]         = useState<BubbleFilter>('all');
   const [selectedCode, setSelected] = useState<string | null>(null);
-  const [period, setPeriod]         = useState<Period>('1d');
+  const [period, setPeriod]         = useState<Period>(initialPeriod);
   const [fullscreen, setFullscreen] = useState(false);
   const { effectsEnabled }          = useAppSettings();
   const { width: screenW, height: screenH } = useWindowDimensions();

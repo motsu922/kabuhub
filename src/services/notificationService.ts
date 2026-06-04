@@ -1,5 +1,5 @@
 import * as Notifications from 'expo-notifications';
-import { Stock, WatchlistItem } from '../types';
+import { Stock, UserSettings, WatchlistItem } from '../types';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -46,7 +46,12 @@ export const NotificationService = {
     return status === 'granted';
   },
 
-  async checkAndNotify(stocks: Stock[], items: WatchlistItem[]) {
+  async checkAndNotify(stocks: Stock[], items: WatchlistItem[], settings?: UserSettings) {
+    if (settings && !settings.notificationsEnabled) return;
+
+    const enabledTypes = settings?.notificationTypes;
+    const threshold = settings?.notificationThresholdPercent ?? 5;
+
     for (const s of stocks) {
       const cfg = items.find((i) => i.stockCode === s.code)?.alertSettings;
       const pct = s.changePercent ?? 0;
@@ -55,7 +60,7 @@ export const NotificationService = {
       const priceStr = `${s.price.toLocaleString('ja-JP')}円 (${sign}${pct.toFixed(2)}%)`;
 
       // 急騰 (≥5%)
-      if (abs >= 5 && pct > 0 && cfg?.surge !== false) {
+      if (abs >= threshold && pct > 0 && cfg?.surge !== false && enabledTypes?.surge !== false) {
         const key = todayKey(s.code, 'surge');
         if (!sentToday.has(key)) {
           sentToday.add(key);
@@ -64,7 +69,7 @@ export const NotificationService = {
       }
 
       // 急落 (≤-5%)
-      if (abs >= 5 && pct < 0 && cfg?.plunge !== false) {
+      if (abs >= threshold && pct < 0 && enabledTypes?.plunge !== false) {
         const key = todayKey(s.code, 'plunge');
         if (!sentToday.has(key)) {
           sentToday.add(key);
@@ -73,7 +78,7 @@ export const NotificationService = {
       }
 
       // 押し目候補 (-3%〜-5%)
-      if (abs >= 3 && abs < 5 && pct < 0 && cfg?.dip !== false) {
+      if (abs >= 3 && abs < threshold && pct < 0 && cfg?.dip !== false && enabledTypes?.dip !== false) {
         const key = todayKey(s.code, 'dip');
         if (!sentToday.has(key)) {
           sentToday.add(key);
@@ -82,7 +87,7 @@ export const NotificationService = {
       }
 
       // 続落アラート
-      if (cfg?.consecutiveDecline !== false && s.dailyCloses && s.dailyCloses.length >= 3) {
+      if (cfg?.consecutiveDecline !== false && enabledTypes?.consecutiveDecline !== false && s.dailyCloses && s.dailyCloses.length >= 3) {
         const days = consecutiveDeclineDays(s.dailyCloses);
         if (days >= 2) {
           const key = todayKey(s.code, `decline${days}`);

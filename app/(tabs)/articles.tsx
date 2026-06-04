@@ -15,10 +15,14 @@ import { useTheme } from '../../src/contexts/ThemeContext';
 import { useWatchlist } from '../../src/hooks/useWatchlist';
 import { fetchStockCandidates, XUrlError } from '../../src/services/stockExtraction';
 import { StockCandidateCard } from '../../src/components/discover/StockCandidateCard';
+import { ClipboardBanner } from '../../src/components/common/ClipboardBanner';
 import { PaywallModal } from '../../src/components/common/PaywallModal';
 import { SubscriptionService, FREE_AI_WEEKLY_LIMIT } from '../../src/services/subscriptionService';
-import { StockCandidate } from '../../src/types';
+import { StockCandidate, UserSettings } from '../../src/types';
+import { StorageService } from '../../src/services/storage';
+import { useClipboardDetection } from '../../src/hooks/useClipboardDetection';
 import { useShareIntent } from 'expo-share-intent';
+import { useFocusEffect } from 'expo-router';
 
 type InputMode = 'url' | 'text';
 
@@ -36,10 +40,23 @@ export default function ArticlesScreen() {
   const [extractionStage, setExtractionStage] = useState('');
   const [aiUsageThisWeek, setAiUsageThisWeek] = useState(0);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
+  const { detection, dismiss, consume } = useClipboardDetection({
+    enabled: settings?.clipboardDetection.enabled !== false,
+    onAppActive: settings?.clipboardDetection.onAppActive !== false,
+    types: settings?.clipboardDetection.types,
+  });
 
   useEffect(() => {
     SubscriptionService.getAIUsageThisWeek().then(setAiUsageThisWeek);
+    StorageService.getSettings().then(setSettings);
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      StorageService.getSettings().then(setSettings);
+    }, [])
+  );
 
   useEffect(() => {
     if (hasShareIntent && shareIntent?.webUrl) {
@@ -108,6 +125,13 @@ export default function ArticlesScreen() {
     setAddedCodes((prev) => new Set([...prev, code]));
   };
 
+  const useClipboardContent = () => {
+    const d = consume();
+    if (!d) return;
+    setInputMode(d.type === 'text' ? 'text' : 'url');
+    setInput(d.content);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <PaywallModal
@@ -116,6 +140,13 @@ export default function ArticlesScreen() {
         onClose={() => setShowPaywall(false)}
       />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+        {detection && (
+          <ClipboardBanner
+            detection={detection}
+            onUse={useClipboardContent}
+            onDismiss={dismiss}
+          />
+        )}
 
         <View style={styles.titleRow}>
           <Text style={styles.title}>銘柄抽出</Text>

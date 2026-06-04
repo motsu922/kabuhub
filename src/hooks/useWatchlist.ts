@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
-import { Stock, OHLCBar, WatchlistItem, AlertSettings, UserIntention } from '../types';
+import { Stock, OHLCBar, WatchlistItem, AlertSettings, UserIntention, RefreshInterval, UserSettings } from '../types';
 import { StorageService } from '../services/storage';
 import { StockDataService } from '../services/stockData';
 import { NotificationService } from '../services/notificationService';
@@ -8,7 +8,12 @@ import { detectSignals } from '../services/technicalAnalysis';
 import { MOCK_STOCKS } from '../constants/mockData';
 import { isUSCode } from '../services/stockData';
 
-const REFRESH_INTERVAL_MS = 60_000;
+const REFRESH_INTERVAL_MS: Record<RefreshInterval, number | null> = {
+  manual: null,
+  '1m': 60_000,
+  '3m': 180_000,
+  '5m': 300_000,
+};
 
 function buildBaseStock(code: string): Stock {
   const mock = MOCK_STOCKS.find((s) => s.code === code);
@@ -27,12 +32,15 @@ export function useWatchlist() {
   const [items,  setItems]  = useState<WatchlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [settings, setSettings] = useState<UserSettings | null>(null);
   const itemsRef = useRef<WatchlistItem[]>([]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
       const watchlistItems = await StorageService.getWatchlist();
+      const appSettings = await StorageService.getSettings();
+      setSettings(appSettings);
       setItems(watchlistItems);
       itemsRef.current = watchlistItems;
       const codes = watchlistItems.map((i) => i.stockCode);
@@ -90,7 +98,7 @@ export function useWatchlist() {
       setLastUpdatedAt(new Date());
 
       // アラート判定 → ローカル通知
-      NotificationService.checkAndNotify(enriched, itemsRef.current).catch(() => {});
+      NotificationService.checkAndNotify(enriched, itemsRef.current, appSettings).catch(() => {});
     } finally {
       setIsLoading(false);
     }
@@ -101,20 +109,23 @@ export function useWatchlist() {
 
   // 60秒ごとにフォアグラウンドで自動更新
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (AppState.currentState === 'active') load();
-    }, REFRESH_INTERVAL_MS);
+    const interval = settings ? REFRESH_INTERVAL_MS[settings.refreshInterval] : REFRESH_INTERVAL_MS['1m'];
+    const timer = interval
+      ? setInterval(() => {
+          if (AppState.currentState === 'active') load();
+        }, interval)
+      : null;
 
     // バックグラウンドから復帰したとき即時更新
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
-      if (state === 'active') load();
+      if (state === 'active' && settings?.refreshOnAppActive !== false) load();
     });
 
     return () => {
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
       sub.remove();
     };
-  }, [load]);
+  }, [load, settings?.refreshInterval, settings?.refreshOnAppActive]);
 
   const addStock = useCallback(async (code: string) => {
     await StorageService.addToWatchlist(code);
