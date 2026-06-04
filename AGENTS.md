@@ -40,6 +40,25 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 
 ---
 
+## EAS Build は月の消耗品（無駄遣い禁止）
+
+フリープランは **月 15 回** まで。超えると翌月1日まで使えない。
+
+### 変更の種類ごとの正しいデプロイ手順
+
+| 変更の種類 | 手順 | EAS Build 消費 |
+|---|---|---|
+| JS・UI・ロジックの変更 | `git push` → GitHub Actions が `eas update`（OTA）を自動実行 | **0回** |
+| `app.json` / `eas.json` / ネイティブ設定 | OTA 不可。EAS Build が必要 | 1回 |
+| クラッシュ調査 | **必ず dev-client + OTA で調査してから**、直ったら production ビルド | 最小1回 |
+
+### 鉄則
+1. **OTA で確認できるものは OTA で確認する**。JS の変更は絶対に EAS Build しない。
+2. クラッシュ調査中は **dev-client ビルド（1回）→ OTA 繰り返し**の順。production ビルドは最後の1回だけ。
+3. EAS Build を指示する前に「この変更はネイティブの変更か？」を自問すること。
+
+---
+
 ## 起動クラッシュ調査手順（証拠ファースト・推測禁止）
 
 > ビルドは1回30〜45分かかる。推測で直すと何サイクルも無駄になる。**必ず .ips を先に入手して読んでから判断すること**。
