@@ -138,6 +138,9 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
 
   const closeFullscreen = useCallback(() => {
     setFullscreen(false);
+    setTimeout(() => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    }, 350);
   }, []);
 
   useEffect(() => {
@@ -149,7 +152,6 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
 
     return () => {
       clearTimeout(timer);
-      ScreenOrientation.unlockAsync().catch(() => {});
     };
   }, [fullscreen]);
 
