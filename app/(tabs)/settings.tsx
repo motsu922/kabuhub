@@ -79,6 +79,7 @@ export default function SettingsScreen() {
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [hasScannedQr, setHasScannedQr] = useState(false);
   const [cameraModule, setCameraModule] = useState<CameraModule | null>(null);
+  const [isCloudSyncExpanded, setIsCloudSyncExpanded] = useState(false);
 
   useEffect(() => {
     StorageService.getSettings().then(setSettings);
@@ -316,43 +317,57 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>設定</Text>
 
-        <SectionHeader title="クラウド同期" styles={styles} />
-        <Text style={styles.sectionDesc}>同じ同期IDを別端末で使うと、手動でデータを共有できます</Text>
         <View style={styles.card}>
-          <View style={styles.inputBlock}>
-            <Text style={styles.rowTitle}>同期ID</Text>
-            <TextInput
-              style={styles.syncInput}
-              value={syncId}
-              onChangeText={(text) => {
-                setSyncId(text);
-                setCloudUpdatedAt(null);
-              }}
-              placeholder="kh-xxxxx-xxxxx"
-              placeholderTextColor={colors.textTertiary}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {cloudUpdatedAt && (
+          <TouchableOpacity style={styles.row} onPress={() => setIsCloudSyncExpanded(!isCloudSyncExpanded)} activeOpacity={0.7}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowTitle}>クラウド同期</Text>
               <Text style={styles.rowDesc}>
-                最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
+                {syncId ? `同期ID: ${syncId}` : '別端末とウォッチリスト・設定・保存記事を共有'}
               </Text>
-            )}
-          </View>
-          <View style={styles.rowBorder} />
-          <ActionRow title="同期IDを作成" desc="このIDを別端末にも入力します" onPress={createSyncId} styles={styles} />
-          <View style={styles.rowBorder} />
-          <ActionRow title="同期IDのQRを表示" desc="別端末のカメラで読み取れます" onPress={showSyncQr} styles={styles} />
-          <View style={styles.rowBorder} />
-          <ActionRow title="QRから同期IDを読み取り" desc="別端末で表示した同期IDを入力" onPress={openQrScanner} styles={styles} />
-          <View style={styles.rowBorder} />
-          <ActionRow title="クラウドデータを確認" desc="指定IDの保存状況を確認" onPress={checkCloudData} styles={styles} />
-          <View style={styles.rowBorder} />
-          <ActionRow title={isSyncing ? '同期中...' : 'この端末をクラウドへ保存'} desc="ウォッチリスト・設定・保存記事を保存" onPress={uploadCloudData} styles={styles} />
-          <View style={styles.rowBorder} />
-          <ActionRow title="クラウドからこの端末へ復元" desc="この端末のデータを置き換え" onPress={restoreCloudData} styles={styles} destructive />
+            </View>
+            <Text style={styles.chevron}>{isCloudSyncExpanded ? '⌃' : '⌄'}</Text>
+          </TouchableOpacity>
+
+          {isCloudSyncExpanded && (
+            <>
+              <View style={styles.rowBorder} />
+              <View style={styles.inputBlock}>
+                <Text style={styles.rowTitle}>同期ID</Text>
+                <TextInput
+                  style={styles.syncInput}
+                  value={syncId}
+                  onChangeText={(text) => {
+                    setSyncId(text);
+                    setCloudUpdatedAt(null);
+                  }}
+                  placeholder="kh-xxxxx-xxxxx"
+                  placeholderTextColor={colors.textTertiary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                {cloudUpdatedAt && (
+                  <Text style={styles.rowDesc}>
+                    最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.rowBorder} />
+              <ActionRow title="同期IDを作成" desc="このIDを別端末にも入力します" onPress={createSyncId} styles={styles} />
+              <View style={styles.rowBorder} />
+              <ActionRow title="同期IDのQRを表示" desc="別端末のカメラで読み取れます" onPress={showSyncQr} styles={styles} />
+              <View style={styles.rowBorder} />
+              <ActionRow title="QRから同期IDを読み取り" desc="別端末で表示した同期IDを入力" onPress={openQrScanner} styles={styles} />
+              <View style={styles.rowBorder} />
+              <ActionRow title="クラウドデータを確認" desc="指定IDの保存状況を確認" onPress={checkCloudData} styles={styles} />
+              <View style={styles.rowBorder} />
+              <ActionRow title={isSyncing ? '同期中...' : 'この端末をクラウドへ保存'} desc="ウォッチリスト・設定・保存記事を保存" onPress={uploadCloudData} styles={styles} />
+              <View style={styles.rowBorder} />
+              <ActionRow title="クラウドからこの端末へ復元" desc="この端末のデータを置き換え" onPress={restoreCloudData} styles={styles} destructive />
+            </>
+          )}
         </View>
 
+        <View style={styles.spacer} />
         <SectionHeader title="テーマ" styles={styles} />
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={toggleTheme} activeOpacity={0.7}>
