@@ -8,6 +8,7 @@ import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
 import { useAppSettings } from '../../contexts/SettingsContext';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
 type Period = '1d' | '7d' | '30d' | '365d';
@@ -124,10 +125,30 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const s = useMemo(() => createStyles(colors), [colors]);
 
   // 全画面時はデバイスが横向きになるので screenW/screenH が入れ替わる
+  // Math.min(screenW, screenH) = 短辺 → 縦横どちらでも一定値になる
   const fsChartH = Math.floor(Math.min(screenW, screenH) * 0.48);
   const L     = fullscreen
     ? { ...LAYOUT.fullscreen, chartH: fsChartH }
     : LAYOUT[compact ? 'compact' : 'normal'];
+
+  // ── 全画面（横向き）ハンドラ ───────────────────────────────────────────────
+  const openFullscreen = useCallback(() => {
+    setFullscreen(true);
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+  }, []);
+
+  const closeFullscreen = useCallback(() => {
+    setFullscreen(false);
+    // モーダルの閉じアニメーション後に向き解除
+    setTimeout(() => {
+      ScreenOrientation.unlockAsync().catch(() => {});
+    }, 350);
+  }, []);
+
+  // アンマウント時に横向きロックが残らないよう解除（安全策）
+  useEffect(() => {
+    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
+  }, []);
 
   const filtered = useMemo(() =>
     stocks.filter(st => {
@@ -254,7 +275,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
       {/* Header */}
       <View style={s.header}>
         <Text style={s.title}>バブルビュー</Text>
-        <TouchableOpacity style={s.iconBtn} onPress={() => setFullscreen(true)}>
+        <TouchableOpacity style={s.iconBtn} onPress={openFullscreen}>
           <Text style={s.iconBtnTxt}>⛶</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.compactBtn, { marginLeft: 6 }]} onPress={() => setCompact(c => !c)}>
@@ -288,13 +309,13 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
         visible={fullscreen}
         animationType="slide"
         statusBarTranslucent
-        onRequestClose={() => setFullscreen(false)}
+        onRequestClose={closeFullscreen}
       >
         <SafeAreaView style={s.fsContainer}>
           {/* FS Header */}
           <View style={s.fsHeader}>
             <Text style={s.title}>バブルビュー</Text>
-            <TouchableOpacity style={s.fsCloseBtn} onPress={() => setFullscreen(false)}>
+            <TouchableOpacity style={s.fsCloseBtn} onPress={closeFullscreen}>
               <Text style={s.fsCloseTxt}>✕ 閉じる</Text>
             </TouchableOpacity>
           </View>
