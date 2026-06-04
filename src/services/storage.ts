@@ -25,7 +25,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
     enabled: true,
     onAppActive: true,
     types: {
-      youtube: true,
+      youtube: false,
       twitter: true,
       url: true,
       text: true,
@@ -53,6 +53,7 @@ function normalizeSettings(settings: Partial<UserSettings> | null): UserSettings
       types: {
         ...DEFAULT_SETTINGS.clipboardDetection.types,
         ...source.clipboardDetection?.types,
+        youtube: false,
       },
     },
     bubbleChart: {

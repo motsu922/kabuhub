@@ -20,7 +20,7 @@ function detectType(text: string): ClipboardType | null {
   if (!trimmed) return null;
 
   if (trimmed.includes('youtube.com/watch') || trimmed.includes('youtu.be/')) {
-    return 'youtube';
+    return null;
   }
   if (trimmed.includes('twitter.com/') || trimmed.includes('x.com/')) {
     return 'twitter';

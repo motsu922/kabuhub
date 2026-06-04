@@ -397,7 +397,6 @@ export default function SettingsScreen() {
             colors={colors}
           />
           <View style={styles.divider} />
-          <ToggleRow title="YouTube" desc="動画URL" value={settings.clipboardDetection.types.youtube} onPress={() => toggleClipboardType('youtube')} styles={styles} colors={colors} compact />
           <ToggleRow title="X" desc="ポストURL" value={settings.clipboardDetection.types.twitter} onPress={() => toggleClipboardType('twitter')} styles={styles} colors={colors} compact />
           <ToggleRow title="Web記事" desc="一般URL" value={settings.clipboardDetection.types.url} onPress={() => toggleClipboardType('url')} styles={styles} colors={colors} compact />
           <ToggleRow title="長文テキスト" desc="50文字以上の文章" value={settings.clipboardDetection.types.text} onPress={() => toggleClipboardType('text')} styles={styles} colors={colors} compact />
