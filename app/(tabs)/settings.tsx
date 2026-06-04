@@ -309,82 +309,6 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>設定</Text>
 
-        <View style={styles.card}>
-          {/* 同期ID・最終保存日時 */}
-          {syncId ? (
-            <View style={styles.syncStatus}>
-              <Text style={styles.syncStatusId}>{syncId}</Text>
-              {cloudUpdatedAt && (
-                <Text style={styles.rowDesc}>
-                  最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
-                </Text>
-              )}
-            </View>
-          ) : null}
-
-          {/* 送る側：保存 + QR発行を一括 */}
-          <TouchableOpacity
-            style={[styles.syncPrimaryBtn, isSyncing && styles.syncPrimaryBtnDisabled]}
-            onPress={saveAndShowQr}
-            disabled={isSyncing}
-            activeOpacity={0.75}
-          >
-            <Text style={styles.syncPrimaryBtnTitle}>
-              {isSyncing ? '保存中...' : syncId ? 'クラウドへ再保存してQRを表示' : 'このデバイスを保存してQRを発行'}
-            </Text>
-            <Text style={styles.syncPrimaryBtnDesc}>
-              {syncId ? 'ウォッチリスト・設定を上書き保存 → QR表示' : 'ID自動発行 → 保存 → QRコード表示'}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.rowBorder} />
-
-          {/* 受け取る側：QRスキャン → 即復元 */}
-          <ActionRow
-            title="QRを読み取ってこの端末に復元"
-            desc="別端末のQRコードから引き継ぎ"
-            onPress={openQrScanner}
-            styles={styles}
-          />
-
-          <View style={styles.rowBorder} />
-
-          {/* 手動入力（QRが使えない場合の予備） */}
-          <TouchableOpacity style={styles.row} onPress={() => setShowManualInput(!showManualInput)} activeOpacity={0.7}>
-            <View style={styles.rowLeft}>
-              <Text style={styles.rowTitle}>同期IDを直接入力して復元</Text>
-              <Text style={styles.rowDesc}>IDをテキストで共有された場合</Text>
-            </View>
-            <Text style={styles.chevron}>{showManualInput ? '⌃' : '⌄'}</Text>
-          </TouchableOpacity>
-
-          {showManualInput && (
-            <>
-              <View style={styles.rowBorder} />
-              <View style={styles.inputBlock}>
-                <TextInput
-                  style={styles.syncInput}
-                  value={manualSyncId}
-                  onChangeText={setManualSyncId}
-                  placeholder="kh-xxxxx-xxxxx"
-                  placeholderTextColor={colors.textTertiary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                <TouchableOpacity
-                  style={[styles.syncPrimaryBtn, (!manualSyncId.trim() || isSyncing) && styles.syncPrimaryBtnDisabled]}
-                  onPress={restoreWithManualId}
-                  disabled={!manualSyncId.trim() || isSyncing}
-                  activeOpacity={0.75}
-                >
-                  <Text style={styles.syncPrimaryBtnTitle}>この端末に復元</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
-
-        <View style={styles.spacer} />
         <SectionHeader title="テーマ" styles={styles} />
         <View style={styles.card}>
           <TouchableOpacity style={styles.row} onPress={toggleTheme} activeOpacity={0.7}>
@@ -564,6 +488,83 @@ export default function SettingsScreen() {
           <ActionRow title="保存記事を削除" desc="銘柄抽出で保存した記事データ" onPress={clearArticles} styles={styles} />
           <View style={styles.rowBorder} />
           <ActionRow title="設定を初期化" desc="通知・更新・表示設定を初期状態へ" onPress={resetSettings} styles={styles} destructive />
+        </View>
+
+        <View style={styles.spacer} />
+        <SectionHeader title="クラウド同期" styles={styles} />
+        <View style={styles.card}>
+          {/* 同期ID・最終保存日時 */}
+          {syncId ? (
+            <View style={styles.syncStatus}>
+              <Text style={styles.syncStatusId}>{syncId}</Text>
+              {cloudUpdatedAt && (
+                <Text style={styles.rowDesc}>
+                  最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
+                </Text>
+              )}
+            </View>
+          ) : null}
+
+          {/* 送る側：保存 + QR発行を一括 */}
+          <TouchableOpacity
+            style={[styles.syncPrimaryBtn, isSyncing && styles.syncPrimaryBtnDisabled]}
+            onPress={saveAndShowQr}
+            disabled={isSyncing}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.syncPrimaryBtnTitle}>
+              {isSyncing ? '保存中...' : syncId ? 'クラウドへ再保存してQRを表示' : 'このデバイスを保存してQRを発行'}
+            </Text>
+            <Text style={styles.syncPrimaryBtnDesc}>
+              {syncId ? 'ウォッチリスト・設定を上書き保存 → QR表示' : 'ID自動発行 → 保存 → QRコード表示'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.rowBorder} />
+
+          {/* 受け取る側：QRスキャン → 即復元 */}
+          <ActionRow
+            title="QRを読み取ってこの端末に復元"
+            desc="別端末のQRコードから引き継ぎ"
+            onPress={openQrScanner}
+            styles={styles}
+          />
+
+          <View style={styles.rowBorder} />
+
+          {/* 手動入力（QRが使えない場合の予備） */}
+          <TouchableOpacity style={styles.row} onPress={() => setShowManualInput(!showManualInput)} activeOpacity={0.7}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowTitle}>同期IDを直接入力して復元</Text>
+              <Text style={styles.rowDesc}>IDをテキストで共有された場合</Text>
+            </View>
+            <Text style={styles.chevron}>{showManualInput ? '⌃' : '⌄'}</Text>
+          </TouchableOpacity>
+
+          {showManualInput && (
+            <>
+              <View style={styles.rowBorder} />
+              <View style={styles.inputBlock}>
+                <TextInput
+                  style={styles.syncInput}
+                  value={manualSyncId}
+                  onChangeText={setManualSyncId}
+                  placeholder="kh-xxxxx-xxxxx"
+                  placeholderTextColor={colors.textTertiary}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity
+                  style={[styles.syncPrimaryBtn, (!manualSyncId.trim() || isSyncing) && styles.syncPrimaryBtnDisabled]}
+                  onPress={restoreWithManualId}
+                  disabled={!manualSyncId.trim() || isSyncing}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.syncPrimaryBtnTitle}>この端末に復元</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
         </View>
 
         <View style={styles.spacer} />
