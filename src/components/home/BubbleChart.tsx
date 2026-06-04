@@ -8,7 +8,6 @@ import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
 import { useAppSettings } from '../../contexts/SettingsContext';
-import * as ScreenOrientation from 'expo-screen-orientation';
 
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
 type Period = '1d' | '7d' | '30d' | '365d';
@@ -131,23 +130,13 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
     ? { ...LAYOUT.fullscreen, chartH: fsChartH }
     : LAYOUT[compact ? 'compact' : 'normal'];
 
-  // ── 全画面（横向き）ハンドラ ───────────────────────────────────────────────
+  // ── 全画面ハンドラ ───────────────────────────────────────────────
   const openFullscreen = useCallback(() => {
     setFullscreen(true);
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
   }, []);
 
   const closeFullscreen = useCallback(() => {
     setFullscreen(false);
-    // モーダルの閉じアニメーション後に向き解除
-    setTimeout(() => {
-      ScreenOrientation.unlockAsync().catch(() => {});
-    }, 350);
-  }, []);
-
-  // アンマウント時に横向きロックが残らないよう解除（安全策）
-  useEffect(() => {
-    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
   }, []);
 
   const filtered = useMemo(() =>
