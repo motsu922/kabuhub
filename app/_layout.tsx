@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider } from 'expo-share-intent';
+import * as Updates from 'expo-updates';
 import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
 import { SettingsProvider } from '../src/contexts/SettingsContext';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
@@ -28,6 +29,18 @@ function AppStack() {
 export default function RootLayout() {
   useEffect(() => {
     RemoteLinkConfig.init();
+    // OTA 自動更新: 開発中は無視。本番では新しいバンドルがあれば即リロード。
+    if (!__DEV__) {
+      Updates.checkForUpdateAsync()
+        .then(({ isAvailable }) => {
+          if (isAvailable) {
+            return Updates.fetchUpdateAsync().then(() => Updates.reloadAsync());
+          }
+        })
+        .catch(() => {
+          // ネットワーク不可・タイムアウト等は無視して既存バンドルで起動
+        });
+    }
   }, []);
 
   return (
