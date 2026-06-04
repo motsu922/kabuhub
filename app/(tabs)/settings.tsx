@@ -229,6 +229,7 @@ export default function SettingsScreen() {
   const ScannerCamera = cameraModule?.CameraView;
 
   const checkCloudData = async () => {
+    if (isSyncing) return;
     const normalized = CloudSyncService.normalizeSyncId(syncId);
     setSyncId(normalized);
     if (!normalized) return;
@@ -251,6 +252,7 @@ export default function SettingsScreen() {
   };
 
   const uploadCloudData = async () => {
+    if (isSyncing) return;
     const normalized = CloudSyncService.normalizeSyncId(syncId);
     if (!normalized) {
       Alert.alert('同期IDが必要です', '同期IDを作成または入力してください');
@@ -273,6 +275,7 @@ export default function SettingsScreen() {
   };
 
   const restoreCloudData = () => {
+    if (isSyncing) return;
     const normalized = CloudSyncService.normalizeSyncId(syncId);
     if (!normalized) {
       Alert.alert('同期IDが必要です', '同期IDを入力してください');

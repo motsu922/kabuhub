@@ -3,6 +3,7 @@ import { db } from './firebase';
 import { StorageService } from './storage';
 
 const COLLECTION = 'userSyncBackups';
+const SYNC_TIMEOUT_MS = 20000;
 
 export interface CloudSyncMeta {
   syncId: string;
@@ -31,6 +32,25 @@ function cleanForFirestore<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function createTimeoutError(): Error {
+  const error = new Error('クラウド同期がタイムアウトしました。通信状態を確認してもう一度お試しください。');
+  (error as Error & { code: string }).code = 'SYNC_TIMEOUT';
+  return error;
+}
+
+async function withSyncTimeout<T>(promise: Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(createTimeoutError()), SYNC_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 function formatError(error: unknown): string {
   if (error instanceof Error) {
     const code = 'code' in error && typeof error.code === 'string' ? error.code : error.name;
@@ -49,11 +69,13 @@ export const CloudSyncService = {
     if (syncId.length < 8) throw new Error('INVALID_SYNC_ID');
 
     const data = await StorageService.exportUserData();
-    await setDoc(syncDoc(syncId), {
-      ...cleanForFirestore(data),
-      syncId,
-      updatedAt: serverTimestamp(),
-    });
+    await withSyncTimeout(
+      setDoc(syncDoc(syncId), {
+        ...cleanForFirestore(data),
+        syncId,
+        updatedAt: serverTimestamp(),
+      })
+    );
 
     return { syncId, updatedAt: data.exportedAt };
   },
@@ -62,7 +84,7 @@ export const CloudSyncService = {
     const syncId = normalizeSyncId(syncIdInput);
     if (syncId.length < 8) return null;
 
-    const snap = await getDoc(syncDoc(syncId));
+    const snap = await withSyncTimeout(getDoc(syncDoc(syncId)));
     if (!snap.exists()) return null;
     const data = snap.data();
     const updatedAt = typeof data.exportedAt === 'string' ? data.exportedAt : null;
@@ -73,7 +95,7 @@ export const CloudSyncService = {
     const syncId = normalizeSyncId(syncIdInput);
     if (syncId.length < 8) throw new Error('INVALID_SYNC_ID');
 
-    const snap = await getDoc(syncDoc(syncId));
+    const snap = await withSyncTimeout(getDoc(syncDoc(syncId)));
     if (!snap.exists()) throw new Error('NOT_FOUND');
     const data = snap.data();
 
