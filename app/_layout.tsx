@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ShareIntentProvider } from 'expo-share-intent';
 import * as Updates from 'expo-updates';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { ThemeProvider, useTheme } from '../src/contexts/ThemeContext';
 import { SettingsProvider } from '../src/contexts/SettingsContext';
 import { RemoteLinkConfig } from '../src/services/remoteLinkConfig';
@@ -29,6 +30,8 @@ function AppStack() {
 export default function RootLayout() {
   useEffect(() => {
     RemoteLinkConfig.init();
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+
     // OTA 自動更新: 開発中は無視。本番では新しいバンドルがあれば即リロード。
     if (!__DEV__) {
       Updates.checkForUpdateAsync()
