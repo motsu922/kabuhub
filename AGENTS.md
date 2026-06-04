@@ -28,15 +28,15 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 - `eas.json` の `autoIncrement: true` は app.json の `buildNumber` に +1 した値でビルドする。
 - **ビルド後に app.json の buildNumber を更新しないと次回コリジョン**（"You've already submitted this build" エラー）が発生する。
 - ルール: **新しい EAS Build を起動する前に `buildNumber` を「最後の提出済みビルド番号 + 1」以上に設定すること**。
-- 現在の最終: 提出済みビルド ≤ 10（build 9 → autoIncrement → 10）。次回は 11 以上。
+- 現在の最終: 提出済みビルド = **15**。app.json は `"16"` → 次回 EAS Build は **17**。
 
 ---
 
 ## expo-updates の管理
 
-- 現在: `"enabled": false`（New Arch 切り分けのため一時停止）。
-- `newArchEnabled: false` で起動確認が取れたら、次のビルドで `"enabled": true` に戻す。
-- それまで OTA デプロイは停止中。
+- 現在: デフォルト有効（`enabled` の明示指定なし = `true`）。
+- `_layout.tsx` に `checkForUpdateAsync → fetchUpdateAsync → reloadAsync` の自動更新処理を実装済み。
+- OTA は `git push` → GitHub Actions `eas-update.yml` で自動配信される。
 
 ---
 
@@ -106,7 +106,7 @@ npx expo start
 {
   "newArchEnabled": false,   // ← 変更禁止
   "updates": {
-    "enabled": true,         // ← New Arch 無効化確認後に true に戻す
+    // enabled は省略（デフォルト true）
     "checkAutomatically": "ON_LOAD",
     "fallbackToCacheTimeout": 0
   }
