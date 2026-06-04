@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.kabuhub.app",
-      "buildNumber": "13",
+      "buildNumber": "14",
       "runtimeVersion": {
         "policy": "appVersion"
       },
