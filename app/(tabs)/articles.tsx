@@ -21,7 +21,7 @@ import { SubscriptionService, FREE_AI_WEEKLY_LIMIT } from '../../src/services/su
 import { StockCandidate, UserSettings } from '../../src/types';
 import { StorageService } from '../../src/services/storage';
 import { useClipboardDetection } from '../../src/hooks/useClipboardDetection';
-import { useShareIntent } from 'expo-share-intent';
+import { useShareIntentContext } from 'expo-share-intent';
 import { useFocusEffect } from 'expo-router';
 
 type InputMode = 'url' | 'text';
@@ -30,7 +30,7 @@ export default function ArticlesScreen() {
   const { colors } = useTheme();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
-  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntent();
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
   const { isInWatchlist, addStock } = useWatchlist();
   const [inputMode, setInputMode] = useState<InputMode>('url');
   const [input, setInput] = useState('');
@@ -59,16 +59,18 @@ export default function ArticlesScreen() {
   );
 
   useEffect(() => {
-    if (hasShareIntent && shareIntent?.webUrl) {
+    if (hasShareIntent && shareIntent.webUrl) {
       setInputMode('url');
       setInput(shareIntent.webUrl);
+      setCandidates([]);
       resetShareIntent();
-    } else if (hasShareIntent && shareIntent?.text) {
+    } else if (hasShareIntent && shareIntent.text) {
       setInputMode('text');
       setInput(shareIntent.text);
+      setCandidates([]);
       resetShareIntent();
     }
-  }, [hasShareIntent, shareIntent]);
+  }, [hasShareIntent, resetShareIntent, shareIntent.text, shareIntent.webUrl]);
 
   const handleExtract = async () => {
     const trimmed = input.trim();
