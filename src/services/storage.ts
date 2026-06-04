@@ -181,4 +181,34 @@ export const StorageService = {
   async clearArticles(): Promise<void> {
     await AsyncStorage.removeItem(KEYS.articles);
   },
+
+  async exportUserData() {
+    const [watchlist, articles, settings] = await Promise.all([
+      StorageService.getWatchlist(),
+      StorageService.getArticles(),
+      StorageService.getSettings(),
+    ]);
+
+    return {
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      watchlist,
+      articles,
+      settings,
+    };
+  },
+
+  async importUserData(data: {
+    watchlist?: WatchlistItem[];
+    articles?: Article[];
+    settings?: UserSettings;
+  }): Promise<void> {
+    const writes: Promise<void>[] = [];
+    if (data.watchlist) writes.push(StorageService.saveWatchlist(data.watchlist));
+    if (data.articles) {
+      writes.push(AsyncStorage.setItem(KEYS.articles, JSON.stringify(data.articles)));
+    }
+    if (data.settings) writes.push(StorageService.saveSettings(data.settings));
+    await Promise.all(writes);
+  },
 };

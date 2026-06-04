@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   Linking,
   Alert,
+  TextInput,
 } from 'react-native';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { useAppSettings } from '../../src/contexts/SettingsContext';
 import { DEFAULT_SETTINGS, StorageService } from '../../src/services/storage';
+import { CloudSyncService } from '../../src/services/cloudSync';
 import { SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { BubbleChartPeriod, RefreshInterval, SecuritiesApp, UserSettings } from '../../src/types';
 
@@ -44,6 +46,9 @@ export default function SettingsScreen() {
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
+  const [syncId, setSyncId] = useState('');
+  const [cloudUpdatedAt, setCloudUpdatedAt] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     StorageService.getSettings().then(setSettings);
@@ -128,10 +133,120 @@ export default function SettingsScreen() {
     ]);
   };
 
+  const createSyncId = () => {
+    const next = CloudSyncService.generateSyncId();
+    setSyncId(next);
+    setCloudUpdatedAt(null);
+  };
+
+  const checkCloudData = async () => {
+    const normalized = CloudSyncService.normalizeSyncId(syncId);
+    setSyncId(normalized);
+    if (!normalized) return;
+    setIsSyncing(true);
+    try {
+      const meta = await CloudSyncService.getMeta(normalized);
+      setCloudUpdatedAt(meta?.updatedAt ?? null);
+      Alert.alert(
+        meta ? 'クラウドデータがあります' : 'クラウドデータなし',
+        meta?.updatedAt ? `最終保存: ${new Date(meta.updatedAt).toLocaleString('ja-JP')}` : 'この同期IDのデータはまだありません'
+      );
+    } catch {
+      Alert.alert('確認できませんでした', '通信状態またはFirestore設定を確認してください');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const uploadCloudData = async () => {
+    const normalized = CloudSyncService.normalizeSyncId(syncId);
+    if (!normalized) {
+      Alert.alert('同期IDが必要です', '同期IDを作成または入力してください');
+      return;
+    }
+    setSyncId(normalized);
+    setIsSyncing(true);
+    try {
+      const meta = await CloudSyncService.upload(normalized);
+      setCloudUpdatedAt(meta.updatedAt);
+      Alert.alert('保存しました', 'この端末のウォッチリスト・設定・保存記事をクラウドへ保存しました');
+    } catch {
+      Alert.alert('保存できませんでした', '通信状態またはFirestore設定を確認してください');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const restoreCloudData = () => {
+    const normalized = CloudSyncService.normalizeSyncId(syncId);
+    if (!normalized) {
+      Alert.alert('同期IDが必要です', '同期IDを入力してください');
+      return;
+    }
+    Alert.alert(
+      'クラウドから復元',
+      'この端末のウォッチリスト・設定・保存記事をクラウドの内容で置き換えます。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '復元',
+          onPress: async () => {
+            setSyncId(normalized);
+            setIsSyncing(true);
+            try {
+              const meta = await CloudSyncService.restore(normalized);
+              const nextSettings = await StorageService.getSettings();
+              setSettings(nextSettings);
+              setCloudUpdatedAt(meta.updatedAt);
+              Alert.alert('復元しました', 'クラウドのデータをこの端末へ反映しました');
+            } catch (e) {
+              Alert.alert('復元できませんでした', '同期IDまたはFirestore設定を確認してください');
+            } finally {
+              setIsSyncing(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>設定</Text>
+
+        <SectionHeader title="クラウド同期" styles={styles} />
+        <Text style={styles.sectionDesc}>同じ同期IDを別端末で使うと、手動でデータを共有できます</Text>
+        <View style={styles.card}>
+          <View style={styles.inputBlock}>
+            <Text style={styles.rowTitle}>同期ID</Text>
+            <TextInput
+              style={styles.syncInput}
+              value={syncId}
+              onChangeText={(text) => {
+                setSyncId(text);
+                setCloudUpdatedAt(null);
+              }}
+              placeholder="kh-xxxxx-xxxxx"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {cloudUpdatedAt && (
+              <Text style={styles.rowDesc}>
+                最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
+              </Text>
+            )}
+          </View>
+          <View style={styles.rowBorder} />
+          <ActionRow title="同期IDを作成" desc="このIDを別端末にも入力します" onPress={createSyncId} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title="クラウドデータを確認" desc="指定IDの保存状況を確認" onPress={checkCloudData} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title={isSyncing ? '同期中...' : 'この端末をクラウドへ保存'} desc="ウォッチリスト・設定・保存記事を保存" onPress={uploadCloudData} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title="クラウドからこの端末へ復元" desc="この端末のデータを置き換え" onPress={restoreCloudData} styles={styles} destructive />
+        </View>
 
         <SectionHeader title="テーマ" styles={styles} />
         <View style={styles.card}>
@@ -558,6 +673,21 @@ function createStyles(c: ColorPalette) {
     },
     choiceTextActive: {
       color: '#06090F',
+    },
+    inputBlock: {
+      padding: Spacing.md,
+      gap: Spacing.sm,
+    },
+    syncInput: {
+      height: 44,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      color: c.text,
+      paddingHorizontal: Spacing.md,
+      fontSize: FontSize.md,
+      fontWeight: '700',
     },
     checkText: {
       fontSize: 18,
