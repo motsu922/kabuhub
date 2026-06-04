@@ -299,30 +299,20 @@ function OverviewPanel({ stats, colors, onPressStock }: {
   onPressStock: (code: string) => void;
 }) {
   const styles = React.useMemo(() => createStyles(colors), [colors]);
-  const avgColor = stats.avgChange >= 0 ? colors.positive : colors.negative;
 
   return (
     <View style={styles.overviewCard}>
       <View style={styles.overviewTop}>
         <View>
-          <Text style={styles.overviewLabel}>ウォッチ銘柄</Text>
+          <Text style={styles.overviewLabel}>ウォッチ銘柄数</Text>
           <Text style={styles.overviewTotal}>{stats.total}</Text>
-        </View>
-        <View style={[styles.avgChip, { backgroundColor: avgColor + '18' }]}>
-          <Text style={[styles.avgChipText, { color: avgColor }]}>{signedPct(stats.avgChange)}</Text>
         </View>
       </View>
 
       <View style={styles.metricGrid}>
         <Metric label="上昇" value={String(stats.up)} color={colors.positive} colors={colors} />
-        <Metric label="下落" value={String(stats.down)} color={colors.negative} colors={colors} />
+        <Metric label="下降" value={String(stats.down)} color={colors.negative} colors={colors} />
         <Metric label="横ばい" value={String(stats.flat)} color={colors.neutral} colors={colors} />
-      </View>
-
-      <View style={styles.intentRow}>
-        <IntentChip label="買いたい" value={stats.buy} color={colors.primary} colors={colors} />
-        <IntentChip label="持ってる" value={stats.hold} color={colors.positive} colors={colors} />
-        <IntentChip label="売りたい" value={stats.sell} color={colors.negative} colors={colors} />
       </View>
 
       <View style={styles.overviewDivider} />
@@ -347,24 +337,9 @@ function Metric({ label, value, color, colors }: {
 }) {
   const styles = React.useMemo(() => createStyles(colors), [colors]);
   return (
-    <View style={styles.metricItem}>
+    <View style={[styles.metricItem, { borderColor: color + '38', backgroundColor: color + '10' }]}>
+      <Text style={[styles.metricLabel, { color }]}>{label}</Text>
       <Text style={[styles.metricValue, { color }]}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function IntentChip({ label, value, color, colors }: {
-  label: string;
-  value: number;
-  color: string;
-  colors: ColorPalette;
-}) {
-  const styles = React.useMemo(() => createStyles(colors), [colors]);
-  return (
-    <View style={[styles.intentChip, { borderColor: color + '44', backgroundColor: color + '12' }]}>
-      <Text style={[styles.intentValue, { color }]}>{value}</Text>
-      <Text style={styles.intentLabel}>{label}</Text>
     </View>
   );
 }
@@ -624,46 +599,22 @@ function createStyles(c: ColorPalette) {
     },
     overviewLabel: { fontSize: FontSize.xs, color: c.textTertiary, fontWeight: '700' },
     overviewTotal: { fontSize: 32, color: c.text, fontWeight: '800', lineHeight: 36 },
-    avgChip: {
-      minWidth: 88,
-      borderRadius: BorderRadius.sm,
-      paddingHorizontal: Spacing.md,
-      paddingVertical: Spacing.sm,
-      alignItems: 'center',
-    },
-    avgChipText: { fontSize: FontSize.lg, fontWeight: '800', fontVariant: ['tabular-nums'] },
     metricGrid: {
       flexDirection: 'row',
       gap: Spacing.sm,
     },
     metricItem: {
       flex: 1,
-      minHeight: 58,
+      minHeight: 70,
       borderRadius: BorderRadius.sm,
       borderWidth: 1,
-      borderColor: c.cardBorder,
-      backgroundColor: c.surface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    metricValue: { fontSize: FontSize.xl, fontWeight: '800', fontVariant: ['tabular-nums'] },
-    metricLabel: { fontSize: FontSize.xs, color: c.textTertiary, fontWeight: '700' },
-    intentRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: Spacing.sm,
-    },
-    intentChip: {
-      minHeight: 32,
-      borderRadius: BorderRadius.full,
-      borderWidth: 1,
       paddingHorizontal: Spacing.sm,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 5,
+      paddingVertical: 10,
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
     },
-    intentValue: { fontSize: FontSize.sm, fontWeight: '800', fontVariant: ['tabular-nums'] },
-    intentLabel: { fontSize: FontSize.xs, color: c.textSecondary, fontWeight: '700' },
+    metricValue: { fontSize: 28, fontWeight: '900', lineHeight: 32, fontVariant: ['tabular-nums'] },
+    metricLabel: { fontSize: FontSize.xs, fontWeight: '800' },
     overviewDivider: { height: 1, backgroundColor: c.separator },
     extremeRow: {
       flexDirection: 'row',
