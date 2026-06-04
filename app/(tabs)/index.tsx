@@ -70,6 +70,58 @@ function generateNotifications(stocks: Stock[], items: WatchlistItem[]): Notific
   return [...byStock.values()];
 }
 
+interface HomeStats {
+  total: number;
+  up: number;
+  down: number;
+  flat: number;
+  avgChange: number;
+  buy: number;
+  hold: number;
+  sell: number;
+  strongest: Stock | null;
+  weakest: Stock | null;
+}
+
+function buildHomeStats(stocks: Stock[], items: WatchlistItem[]): HomeStats {
+  const total = stocks.length;
+  const up = stocks.filter((s) => (s.changePercent ?? 0) > 0).length;
+  const down = stocks.filter((s) => (s.changePercent ?? 0) < 0).length;
+  const flat = Math.max(0, total - up - down);
+  const avgChange = total
+    ? stocks.reduce((sum, s) => sum + (s.changePercent ?? 0), 0) / total
+    : 0;
+
+  const intentionCounts = items.reduce(
+    (acc, item) => {
+      if (item.intention === 'buy') acc.buy += 1;
+      if (item.intention === 'hold') acc.hold += 1;
+      if (item.intention === 'sell') acc.sell += 1;
+      return acc;
+    },
+    { buy: 0, hold: 0, sell: 0 }
+  );
+
+  const byChange = [...stocks].sort((a, b) => (b.changePercent ?? 0) - (a.changePercent ?? 0));
+
+  return {
+    total,
+    up,
+    down,
+    flat,
+    avgChange,
+    ...intentionCounts,
+    strongest: byChange[0] ?? null,
+    weakest: byChange[byChange.length - 1] ?? null,
+  };
+}
+
+function topMovers(stocks: Stock[]): Stock[] {
+  return [...stocks]
+    .sort((a, b) => Math.abs(b.changePercent ?? 0) - Math.abs(a.changePercent ?? 0))
+    .slice(0, 4);
+}
+
 export default function HomeScreen() {
   const router = useRouter();
   const { colors, theme } = useTheme();
@@ -77,6 +129,8 @@ export default function HomeScreen() {
   const [settings, setSettings] = React.useState<UserSettings | null>(null);
 
   const notifications = generateNotifications(stocks, items);
+  const stats = React.useMemo(() => buildHomeStats(stocks, items), [stocks, items]);
+  const movers = React.useMemo(() => topMovers(stocks), [stocks]);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const styles = React.useMemo(() => createStyles(colors), [colors]);
 
@@ -147,6 +201,31 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {stocks.length > 0 && (
+          <Section title="今日の概況" colors={colors}>
+            <OverviewPanel
+              stats={stats}
+              colors={colors}
+              onPressStock={(code) => router.push(`/stock/${code}`)}
+            />
+          </Section>
+        )}
+
+        {movers.length > 0 && (
+          <Section title="値動き上位" colors={colors}>
+            <View style={styles.moverGrid}>
+              {movers.map((stock) => (
+                <MoverTile
+                  key={stock.code}
+                  stock={stock}
+                  colors={colors}
+                  onPress={() => router.push(`/stock/${stock.code}`)}
+                />
+              ))}
+            </View>
+          </Section>
+        )}
+
         {stocks.length > 0 && settings?.bubbleChart.showOnHome !== false && (
           <BubbleChart
             stocks={stocks}
@@ -206,6 +285,122 @@ export default function HomeScreen() {
         )}
       </Animated.ScrollView>
     </SafeAreaView>
+  );
+}
+
+function signedPct(value: number): string {
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+function OverviewPanel({ stats, colors, onPressStock }: {
+  stats: HomeStats;
+  colors: ColorPalette;
+  onPressStock: (code: string) => void;
+}) {
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const avgColor = stats.avgChange >= 0 ? colors.positive : colors.negative;
+
+  return (
+    <View style={styles.overviewCard}>
+      <View style={styles.overviewTop}>
+        <View>
+          <Text style={styles.overviewLabel}>ウォッチ銘柄</Text>
+          <Text style={styles.overviewTotal}>{stats.total}</Text>
+        </View>
+        <View style={[styles.avgChip, { backgroundColor: avgColor + '18' }]}>
+          <Text style={[styles.avgChipText, { color: avgColor }]}>{signedPct(stats.avgChange)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.metricGrid}>
+        <Metric label="上昇" value={String(stats.up)} color={colors.positive} colors={colors} />
+        <Metric label="下落" value={String(stats.down)} color={colors.negative} colors={colors} />
+        <Metric label="横ばい" value={String(stats.flat)} color={colors.neutral} colors={colors} />
+      </View>
+
+      <View style={styles.intentRow}>
+        <IntentChip label="買いたい" value={stats.buy} color={colors.primary} colors={colors} />
+        <IntentChip label="持ってる" value={stats.hold} color={colors.positive} colors={colors} />
+        <IntentChip label="売りたい" value={stats.sell} color={colors.negative} colors={colors} />
+      </View>
+
+      <View style={styles.overviewDivider} />
+
+      <View style={styles.extremeRow}>
+        {stats.strongest && (
+          <ExtremeButton label="最大上昇" stock={stats.strongest} color={colors.positive} onPress={onPressStock} styles={styles} />
+        )}
+        {stats.weakest && (
+          <ExtremeButton label="最大下落" stock={stats.weakest} color={colors.negative} onPress={onPressStock} styles={styles} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+function Metric({ label, value, color, colors }: {
+  label: string;
+  value: string;
+  color: string;
+  colors: ColorPalette;
+}) {
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+  return (
+    <View style={styles.metricItem}>
+      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function IntentChip({ label, value, color, colors }: {
+  label: string;
+  value: number;
+  color: string;
+  colors: ColorPalette;
+}) {
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+  return (
+    <View style={[styles.intentChip, { borderColor: color + '44', backgroundColor: color + '12' }]}>
+      <Text style={[styles.intentValue, { color }]}>{value}</Text>
+      <Text style={styles.intentLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ExtremeButton({ label, stock, color, onPress, styles }: {
+  label: string;
+  stock: Stock;
+  color: string;
+  onPress: (code: string) => void;
+  styles: ReturnType<typeof createStyles>;
+}) {
+  return (
+    <TouchableOpacity style={styles.extremeButton} onPress={() => onPress(stock.code)} activeOpacity={0.7}>
+      <Text style={styles.extremeLabel}>{label}</Text>
+      <Text style={styles.extremeName} numberOfLines={1}>{stock.name}</Text>
+      <Text style={[styles.extremePct, { color }]}>{signedPct(stock.changePercent ?? 0)}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function MoverTile({ stock, colors, onPress }: {
+  stock: Stock;
+  colors: ColorPalette;
+  onPress: () => void;
+}) {
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const isUp = (stock.changePercent ?? 0) >= 0;
+  const accent = isUp ? colors.positive : colors.negative;
+
+  return (
+    <TouchableOpacity style={styles.moverTile} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.moverAccent, { backgroundColor: accent }]} />
+      <Text style={styles.moverName} numberOfLines={1}>{stock.name}</Text>
+      <Text style={styles.moverCode}>{stock.code}</Text>
+      <Text style={[styles.moverPct, { color: accent }]}>{signedPct(stock.changePercent ?? 0)}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -414,6 +609,105 @@ function createStyles(c: ColorPalette) {
     refreshIcon: { fontSize: 22, color: c.primary, fontWeight: '700' },
     scroll: { paddingHorizontal: Spacing.md, paddingTop: Spacing.md, paddingBottom: 110 },
     section: { marginBottom: Spacing.xl },
+    overviewCard: {
+      backgroundColor: c.card,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      padding: Spacing.md,
+      gap: Spacing.md,
+    },
+    overviewTop: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    overviewLabel: { fontSize: FontSize.xs, color: c.textTertiary, fontWeight: '700' },
+    overviewTotal: { fontSize: 32, color: c.text, fontWeight: '800', lineHeight: 36 },
+    avgChip: {
+      minWidth: 88,
+      borderRadius: BorderRadius.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      alignItems: 'center',
+    },
+    avgChipText: { fontSize: FontSize.lg, fontWeight: '800', fontVariant: ['tabular-nums'] },
+    metricGrid: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    metricItem: {
+      flex: 1,
+      minHeight: 58,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    metricValue: { fontSize: FontSize.xl, fontWeight: '800', fontVariant: ['tabular-nums'] },
+    metricLabel: { fontSize: FontSize.xs, color: c.textTertiary, fontWeight: '700' },
+    intentRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    intentChip: {
+      minHeight: 32,
+      borderRadius: BorderRadius.full,
+      borderWidth: 1,
+      paddingHorizontal: Spacing.sm,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+    },
+    intentValue: { fontSize: FontSize.sm, fontWeight: '800', fontVariant: ['tabular-nums'] },
+    intentLabel: { fontSize: FontSize.xs, color: c.textSecondary, fontWeight: '700' },
+    overviewDivider: { height: 1, backgroundColor: c.separator },
+    extremeRow: {
+      flexDirection: 'row',
+      gap: Spacing.sm,
+    },
+    extremeButton: {
+      flex: 1,
+      minHeight: 72,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.surface,
+      padding: Spacing.sm,
+      justifyContent: 'space-between',
+    },
+    extremeLabel: { fontSize: FontSize.xs, color: c.textTertiary, fontWeight: '700' },
+    extremeName: { fontSize: FontSize.sm, color: c.text, fontWeight: '700' },
+    extremePct: { fontSize: FontSize.md, fontWeight: '800', fontVariant: ['tabular-nums'] },
+    moverGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Spacing.sm,
+    },
+    moverTile: {
+      width: '48.7%',
+      minHeight: 92,
+      backgroundColor: c.card,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      padding: Spacing.sm,
+      overflow: 'hidden',
+      justifyContent: 'space-between',
+    },
+    moverAccent: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 2,
+    },
+    moverName: { fontSize: FontSize.sm, color: c.text, fontWeight: '800', marginTop: 3 },
+    moverCode: { fontSize: FontSize.xs, color: c.textTertiary, fontWeight: '700' },
+    moverPct: { fontSize: FontSize.lg, fontWeight: '800', fontVariant: ['tabular-nums'] },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
