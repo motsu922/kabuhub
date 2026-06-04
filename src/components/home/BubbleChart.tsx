@@ -341,6 +341,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock, initialPeriod
               b={selected}
               colors={colors}
               s={s}
+              isFullscreen
               overlapGroup={overlapGroup}
               overlapIdx={overlapIdx}
               onClose={() => setSelected(null)}
@@ -471,10 +472,11 @@ function ChartCanvas({
 
 /* ── Detail panel ─────────────────────────────────────────────────────────── */
 
-function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelectOverlap, onNavigate }: {
+function DetailPanel({ b, colors, s, isFullscreen = false, overlapGroup, overlapIdx, onClose, onSelectOverlap, onNavigate }: {
   b: Bubble;
   colors: ColorPalette;
   s: ReturnType<typeof createStyles>;
+  isFullscreen?: boolean;
   overlapGroup: Bubble[];
   overlapIdx: number;
   onClose: () => void;
@@ -500,7 +502,7 @@ function DetailPanel({ b, colors, s, overlapGroup, overlapIdx, onClose, onSelect
   ];
 
   return (
-    <View style={s.detail}>
+    <View style={[s.detail, isFullscreen && s.fsDetail]}>
       <View style={s.detailHead}>
         <View style={{ flex: 1 }}>
           <Text style={s.detailName} numberOfLines={1}>{stock.name}</Text>
@@ -935,6 +937,20 @@ function createStyles(c: ColorPalette) {
       borderWidth: 1,
       borderColor: c.cardBorder,
       padding: Spacing.md,
+    },
+    fsDetail: {
+      position: 'absolute',
+      top: 104,
+      right: 12,
+      width: 320,
+      maxWidth: '42%',
+      margin: 0,
+      zIndex: 20,
+      shadowColor: '#000',
+      shadowOpacity: 0.35,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 6 },
+      elevation: 8,
     },
     detailHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
     overlapNav: { flexDirection: 'row', alignItems: 'center', gap: 6, marginRight: 8 },
