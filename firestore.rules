@@ -1,0 +1,26 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /userSyncBackups/{syncId} {
+      allow get: if isValidSyncId(syncId);
+      allow create, update: if isValidSyncId(syncId)
+        && request.resource.data.syncId == syncId
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.keys().hasOnly([
+          'syncId',
+          'schemaVersion',
+          'exportedAt',
+          'updatedAt',
+          'watchlist',
+          'articles',
+          'settings'
+        ]);
+      allow list, delete: if false;
+    }
+
+    function isValidSyncId(syncId) {
+      return syncId.matches('^kh-[a-z0-9]{5}-[a-z0-9]{5}$');
+    }
+  }
+}
