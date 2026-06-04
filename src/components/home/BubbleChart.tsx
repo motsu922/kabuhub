@@ -8,6 +8,7 @@ import { Stock, WatchlistItem, UserIntention } from '../../types';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../constants/theme';
 import { ExternalLinks } from '../../constants/externalLinks';
 import { useAppSettings } from '../../contexts/SettingsContext';
+import * as ScreenOrientation from 'expo-screen-orientation';
 
 type BubbleFilter = 'all' | 'interested' | 'watching' | 'holding';
 type Period = '1d' | '7d' | '30d' | '365d';
@@ -138,6 +139,19 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
   const closeFullscreen = useCallback(() => {
     setFullscreen(false);
   }, []);
+
+  useEffect(() => {
+    if (!fullscreen) return undefined;
+
+    const timer = setTimeout(() => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE).catch(() => {});
+    }, 250);
+
+    return () => {
+      clearTimeout(timer);
+      ScreenOrientation.unlockAsync().catch(() => {});
+    };
+  }, [fullscreen]);
 
   const filtered = useMemo(() =>
     stocks.filter(st => {
@@ -298,6 +312,7 @@ export function BubbleChart({ stocks, items, colors, onPressStock }: Props) {
         visible={fullscreen}
         animationType="slide"
         statusBarTranslucent
+        supportedOrientations={['portrait', 'landscape', 'landscape-left', 'landscape-right']}
         onRequestClose={closeFullscreen}
       >
         <SafeAreaView style={s.fsContainer}>
