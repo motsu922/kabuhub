@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { useAppSettings } from '../../src/contexts/SettingsContext';
@@ -21,6 +22,7 @@ import { SecuritiesAppLinks } from '../../src/constants/externalLinks';
 import { BubbleChartPeriod, RefreshInterval, SecuritiesApp, UserSettings } from '../../src/types';
 
 const BUILD_TIMESTAMP = '2026-05-28 00:00';
+const SYNC_ID_STORAGE_KEY = '@kabuhub/cloud_sync_id';
 
 const SECURITIES_OPTIONS: { key: SecuritiesApp; name: string; desc: string }[] = [
   { key: 'ispeed', name: 'iSPEED', desc: '楽天証券' },
@@ -79,11 +81,19 @@ export default function SettingsScreen() {
   const [isScannerVisible, setIsScannerVisible] = useState(false);
   const [hasScannedQr, setHasScannedQr] = useState(false);
   const [cameraModule, setCameraModule] = useState<CameraModule | null>(null);
-  const [isCloudSyncExpanded, setIsCloudSyncExpanded] = useState(false);
+  const [showManualInput, setShowManualInput] = useState(false);
+  const [manualSyncId, setManualSyncId] = useState('');
 
   useEffect(() => {
     StorageService.getSettings().then(setSettings);
+    AsyncStorage.getItem(SYNC_ID_STORAGE_KEY).then(id => { if (id) setSyncId(id); });
   }, []);
+
+  // 同期IDを state + AsyncStorage の両方に保存
+  const updateSyncId = (id: string) => {
+    setSyncId(id);
+    AsyncStorage.setItem(SYNC_ID_STORAGE_KEY, id);
+  };
 
   const saveSettings = async (next: UserSettings) => {
     setSettings(next);
@@ -164,20 +174,24 @@ export default function SettingsScreen() {
     ]);
   };
 
-  const createSyncId = () => {
-    const next = CloudSyncService.generateSyncId();
-    setSyncId(next);
-    setCloudUpdatedAt(null);
-  };
-
-  const showSyncQr = () => {
-    const normalized = CloudSyncService.normalizeSyncId(syncId);
-    if (!normalized.match(/^kh-[a-z0-9]{5}-[a-z0-9]{5}$/)) {
-      Alert.alert('同期IDが必要です', '先に同期IDを作成または入力してください');
-      return;
+  // ID自動生成 → クラウド保存 → QR表示（送る側の一括操作）
+  const saveAndShowQr = async () => {
+    if (isSyncing) return;
+    let id = syncId;
+    if (!id.match(/^kh-[a-z0-9]{5}-[a-z0-9]{5}$/)) {
+      id = CloudSyncService.generateSyncId();
+      updateSyncId(id);
     }
-    setSyncId(normalized);
-    setIsQrVisible(true);
+    setIsSyncing(true);
+    try {
+      const meta = await CloudSyncService.upload(id);
+      setCloudUpdatedAt(meta.updatedAt);
+      setIsQrVisible(true);
+    } catch (error) {
+      Alert.alert('保存できませんでした', CloudSyncService.formatError(error));
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const openQrScanner = async () => {
@@ -221,76 +235,57 @@ export default function SettingsScreen() {
       return;
     }
 
-    setSyncId(nextSyncId);
-    setCloudUpdatedAt(null);
     setIsScannerVisible(false);
-    Alert.alert('同期IDを読み取りました', nextSyncId);
+
+    // QR読み取り後、即座に復元確認へ
+    Alert.alert(
+      'この端末に復元しますか？',
+      `同期ID: ${nextSyncId}\n\nこの端末のウォッチリスト・設定・保存記事をクラウドの内容で置き換えます。`,
+      [
+        { text: 'キャンセル', style: 'cancel', onPress: () => setHasScannedQr(false) },
+        {
+          text: '復元する',
+          onPress: async () => {
+            updateSyncId(nextSyncId);
+            setIsSyncing(true);
+            try {
+              const meta = await CloudSyncService.restore(nextSyncId);
+              const nextSettings = await StorageService.getSettings();
+              setSettings(nextSettings);
+              setCloudUpdatedAt(meta.updatedAt);
+              Alert.alert('復元しました', 'クラウドのデータをこの端末へ反映しました');
+            } catch (error) {
+              Alert.alert('復元できませんでした', CloudSyncService.formatError(error));
+            } finally {
+              setIsSyncing(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const ScannerCamera = cameraModule?.CameraView;
 
-  const checkCloudData = async () => {
+  // 手動入力IDで復元（QRが使えない場合の予備）
+  const restoreWithManualId = () => {
     if (isSyncing) return;
-    const normalized = CloudSyncService.normalizeSyncId(syncId);
-    setSyncId(normalized);
-    if (!normalized) return;
-    setIsSyncing(true);
-    try {
-      const meta = await CloudSyncService.getMeta(normalized);
-      setCloudUpdatedAt(meta?.updatedAt ?? null);
-      Alert.alert(
-        meta ? 'クラウドデータがあります' : 'クラウドデータなし',
-        meta?.updatedAt ? `最終保存: ${new Date(meta.updatedAt).toLocaleString('ja-JP')}` : 'この同期IDのデータはまだありません'
-      );
-    } catch (error) {
-      Alert.alert(
-        '確認できませんでした',
-        `通信状態またはFirestore設定を確認してください。\n\n${CloudSyncService.formatError(error)}`
-      );
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const uploadCloudData = async () => {
-    if (isSyncing) return;
-    const normalized = CloudSyncService.normalizeSyncId(syncId);
+    const normalized = CloudSyncService.normalizeSyncId(manualSyncId);
     if (!normalized) {
-      Alert.alert('同期IDが必要です', '同期IDを作成または入力してください');
-      return;
-    }
-    setSyncId(normalized);
-    setIsSyncing(true);
-    try {
-      const meta = await CloudSyncService.upload(normalized);
-      setCloudUpdatedAt(meta.updatedAt);
-      Alert.alert('保存しました', 'この端末のウォッチリスト・設定・保存記事をクラウドへ保存しました');
-    } catch (error) {
-      Alert.alert(
-        '保存できませんでした',
-        `通信状態またはFirestore設定を確認してください。\n\n${CloudSyncService.formatError(error)}`
-      );
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  const restoreCloudData = () => {
-    if (isSyncing) return;
-    const normalized = CloudSyncService.normalizeSyncId(syncId);
-    if (!normalized) {
-      Alert.alert('同期IDが必要です', '同期IDを入力してください');
+      Alert.alert('同期IDが必要です', 'kh-xxxxx-xxxxx の形式で入力してください');
       return;
     }
     Alert.alert(
       'クラウドから復元',
-      'この端末のウォッチリスト・設定・保存記事をクラウドの内容で置き換えます。',
+      `同期ID: ${normalized}\n\nこの端末のデータをクラウドの内容で置き換えます。`,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
-          text: '復元',
+          text: '復元する',
           onPress: async () => {
-            setSyncId(normalized);
+            updateSyncId(normalized);
+            setManualSyncId('');
+            setShowManualInput(false);
             setIsSyncing(true);
             try {
               const meta = await CloudSyncService.restore(normalized);
@@ -299,10 +294,7 @@ export default function SettingsScreen() {
               setCloudUpdatedAt(meta.updatedAt);
               Alert.alert('復元しました', 'クラウドのデータをこの端末へ反映しました');
             } catch (error) {
-              Alert.alert(
-                '復元できませんでした',
-                `同期IDまたはFirestore設定を確認してください。\n\n${CloudSyncService.formatError(error)}`
-              );
+              Alert.alert('復元できませんでした', CloudSyncService.formatError(error));
             } finally {
               setIsSyncing(false);
             }
@@ -318,51 +310,76 @@ export default function SettingsScreen() {
         <Text style={styles.title}>設定</Text>
 
         <View style={styles.card}>
-          <TouchableOpacity style={styles.row} onPress={() => setIsCloudSyncExpanded(!isCloudSyncExpanded)} activeOpacity={0.7}>
-            <View style={styles.rowLeft}>
-              <Text style={styles.rowTitle}>クラウド同期</Text>
-              <Text style={styles.rowDesc}>
-                {syncId ? `同期ID: ${syncId}` : '別端末とウォッチリスト・設定・保存記事を共有'}
-              </Text>
+          {/* 同期ID・最終保存日時 */}
+          {syncId ? (
+            <View style={styles.syncStatus}>
+              <Text style={styles.syncStatusId}>{syncId}</Text>
+              {cloudUpdatedAt && (
+                <Text style={styles.rowDesc}>
+                  最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
+                </Text>
+              )}
             </View>
-            <Text style={styles.chevron}>{isCloudSyncExpanded ? '⌃' : '⌄'}</Text>
+          ) : null}
+
+          {/* 送る側：保存 + QR発行を一括 */}
+          <TouchableOpacity
+            style={[styles.syncPrimaryBtn, isSyncing && styles.syncPrimaryBtnDisabled]}
+            onPress={saveAndShowQr}
+            disabled={isSyncing}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.syncPrimaryBtnTitle}>
+              {isSyncing ? '保存中...' : syncId ? 'クラウドへ再保存してQRを表示' : 'このデバイスを保存してQRを発行'}
+            </Text>
+            <Text style={styles.syncPrimaryBtnDesc}>
+              {syncId ? 'ウォッチリスト・設定を上書き保存 → QR表示' : 'ID自動発行 → 保存 → QRコード表示'}
+            </Text>
           </TouchableOpacity>
 
-          {isCloudSyncExpanded && (
+          <View style={styles.rowBorder} />
+
+          {/* 受け取る側：QRスキャン → 即復元 */}
+          <ActionRow
+            title="QRを読み取ってこの端末に復元"
+            desc="別端末のQRコードから引き継ぎ"
+            onPress={openQrScanner}
+            styles={styles}
+          />
+
+          <View style={styles.rowBorder} />
+
+          {/* 手動入力（QRが使えない場合の予備） */}
+          <TouchableOpacity style={styles.row} onPress={() => setShowManualInput(!showManualInput)} activeOpacity={0.7}>
+            <View style={styles.rowLeft}>
+              <Text style={styles.rowTitle}>同期IDを直接入力して復元</Text>
+              <Text style={styles.rowDesc}>IDをテキストで共有された場合</Text>
+            </View>
+            <Text style={styles.chevron}>{showManualInput ? '⌃' : '⌄'}</Text>
+          </TouchableOpacity>
+
+          {showManualInput && (
             <>
               <View style={styles.rowBorder} />
               <View style={styles.inputBlock}>
-                <Text style={styles.rowTitle}>同期ID</Text>
                 <TextInput
                   style={styles.syncInput}
-                  value={syncId}
-                  onChangeText={(text) => {
-                    setSyncId(text);
-                    setCloudUpdatedAt(null);
-                  }}
+                  value={manualSyncId}
+                  onChangeText={setManualSyncId}
                   placeholder="kh-xxxxx-xxxxx"
                   placeholderTextColor={colors.textTertiary}
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
-                {cloudUpdatedAt && (
-                  <Text style={styles.rowDesc}>
-                    最終保存: {new Date(cloudUpdatedAt).toLocaleString('ja-JP')}
-                  </Text>
-                )}
+                <TouchableOpacity
+                  style={[styles.syncPrimaryBtn, (!manualSyncId.trim() || isSyncing) && styles.syncPrimaryBtnDisabled]}
+                  onPress={restoreWithManualId}
+                  disabled={!manualSyncId.trim() || isSyncing}
+                  activeOpacity={0.75}
+                >
+                  <Text style={styles.syncPrimaryBtnTitle}>この端末に復元</Text>
+                </TouchableOpacity>
               </View>
-              <View style={styles.rowBorder} />
-              <ActionRow title="同期IDを作成" desc="このIDを別端末にも入力します" onPress={createSyncId} styles={styles} />
-              <View style={styles.rowBorder} />
-              <ActionRow title="同期IDのQRを表示" desc="別端末のカメラで読み取れます" onPress={showSyncQr} styles={styles} />
-              <View style={styles.rowBorder} />
-              <ActionRow title="QRから同期IDを読み取り" desc="別端末で表示した同期IDを入力" onPress={openQrScanner} styles={styles} />
-              <View style={styles.rowBorder} />
-              <ActionRow title="クラウドデータを確認" desc="指定IDの保存状況を確認" onPress={checkCloudData} styles={styles} />
-              <View style={styles.rowBorder} />
-              <ActionRow title={isSyncing ? '同期中...' : 'この端末をクラウドへ保存'} desc="ウォッチリスト・設定・保存記事を保存" onPress={uploadCloudData} styles={styles} />
-              <View style={styles.rowBorder} />
-              <ActionRow title="クラウドからこの端末へ復元" desc="この端末のデータを置き換え" onPress={restoreCloudData} styles={styles} destructive />
             </>
           )}
         </View>
@@ -847,6 +864,37 @@ function createStyles(c: ColorPalette) {
       paddingHorizontal: Spacing.md,
       fontSize: FontSize.md,
       fontWeight: '700',
+    },
+    syncStatus: {
+      paddingHorizontal: Spacing.md,
+      paddingVertical: Spacing.sm,
+      gap: 2,
+      borderBottomWidth: 1,
+      borderBottomColor: c.separator,
+    },
+    syncStatusId: {
+      fontSize: FontSize.md,
+      fontWeight: '700',
+      color: c.primary,
+    },
+    syncPrimaryBtn: {
+      margin: Spacing.md,
+      backgroundColor: c.primary,
+      borderRadius: BorderRadius.sm,
+      paddingHorizontal: Spacing.md,
+      paddingVertical: 14,
+      gap: 3,
+    },
+    syncPrimaryBtnDisabled: { opacity: 0.45 },
+    syncPrimaryBtnTitle: {
+      fontSize: FontSize.md,
+      fontWeight: '800',
+      color: '#06090F',
+    },
+    syncPrimaryBtnDesc: {
+      fontSize: FontSize.xs,
+      color: '#06090F',
+      opacity: 0.65,
     },
     modalBackdrop: {
       flex: 1,
