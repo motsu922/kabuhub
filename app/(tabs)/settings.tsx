@@ -9,7 +9,10 @@ import {
   Linking,
   Alert,
   TextInput,
+  Modal,
 } from 'react-native';
+import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
+import QRCode from 'react-native-qrcode-svg';
 import { Spacing, FontSize, BorderRadius, ColorPalette } from '../../src/constants/theme';
 import { useTheme } from '../../src/contexts/ThemeContext';
 import { useAppSettings } from '../../src/contexts/SettingsContext';
@@ -40,15 +43,34 @@ const PERIOD_OPTIONS: { key: BubbleChartPeriod; label: string }[] = [
   { key: '365d', label: '365日' },
 ];
 
+function extractSyncIdFromQr(data: string): string | null {
+  const raw = data.trim();
+  const direct = raw.match(/kh-[a-z0-9]{5}-[a-z0-9]{5}/i)?.[0];
+  if (direct) return CloudSyncService.normalizeSyncId(direct);
+
+  try {
+    const url = new URL(raw);
+    const value = url.searchParams.get('syncId') ?? url.searchParams.get('id');
+    const normalized = value ? CloudSyncService.normalizeSyncId(value) : '';
+    return normalized.match(/^kh-[a-z0-9]{5}-[a-z0-9]{5}$/) ? normalized : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function SettingsScreen() {
   const { colors, theme, toggleTheme } = useTheme();
   const { effectsEnabled, setEffectsEnabled } = useAppSettings();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_SETTINGS);
   const [syncId, setSyncId] = useState('');
   const [cloudUpdatedAt, setCloudUpdatedAt] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isQrVisible, setIsQrVisible] = useState(false);
+  const [isScannerVisible, setIsScannerVisible] = useState(false);
+  const [hasScannedQr, setHasScannedQr] = useState(false);
 
   useEffect(() => {
     StorageService.getSettings().then(setSettings);
@@ -137,6 +159,43 @@ export default function SettingsScreen() {
     const next = CloudSyncService.generateSyncId();
     setSyncId(next);
     setCloudUpdatedAt(null);
+  };
+
+  const showSyncQr = () => {
+    const normalized = CloudSyncService.normalizeSyncId(syncId);
+    if (!normalized.match(/^kh-[a-z0-9]{5}-[a-z0-9]{5}$/)) {
+      Alert.alert('同期IDが必要です', '先に同期IDを作成または入力してください');
+      return;
+    }
+    setSyncId(normalized);
+    setIsQrVisible(true);
+  };
+
+  const openQrScanner = async () => {
+    const permission = cameraPermission?.granted ? cameraPermission : await requestCameraPermission();
+    if (!permission.granted) {
+      Alert.alert('カメラ許可が必要です', '同期IDのQRを読み取るにはカメラへのアクセスを許可してください');
+      return;
+    }
+    setHasScannedQr(false);
+    setIsScannerVisible(true);
+  };
+
+  const handleQrScanned = ({ data }: BarcodeScanningResult) => {
+    if (hasScannedQr) return;
+    setHasScannedQr(true);
+
+    const nextSyncId = extractSyncIdFromQr(data);
+    if (!nextSyncId) {
+      Alert.alert('読み取れませんでした', 'KabuHubの同期ID QRではありません');
+      setHasScannedQr(false);
+      return;
+    }
+
+    setSyncId(nextSyncId);
+    setCloudUpdatedAt(null);
+    setIsScannerVisible(false);
+    Alert.alert('同期IDを読み取りました', nextSyncId);
   };
 
   const checkCloudData = async () => {
@@ -249,6 +308,10 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.rowBorder} />
           <ActionRow title="同期IDを作成" desc="このIDを別端末にも入力します" onPress={createSyncId} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title="同期IDのQRを表示" desc="別端末のカメラで読み取れます" onPress={showSyncQr} styles={styles} />
+          <View style={styles.rowBorder} />
+          <ActionRow title="QRから同期IDを読み取り" desc="別端末で表示した同期IDを入力" onPress={openQrScanner} styles={styles} />
           <View style={styles.rowBorder} />
           <ActionRow title="クラウドデータを確認" desc="指定IDの保存状況を確認" onPress={checkCloudData} styles={styles} />
           <View style={styles.rowBorder} />
@@ -453,6 +516,43 @@ export default function SettingsScreen() {
           <Text style={styles.versionText}>{BUILD_TIMESTAMP}</Text>
         </View>
       </ScrollView>
+
+      <Modal visible={isQrVisible} transparent animationType="fade" onRequestClose={() => setIsQrVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.qrSheet}>
+            <Text style={styles.modalTitle}>同期ID QR</Text>
+            <View style={styles.qrBox}>
+              <QRCode value={syncId} size={220} backgroundColor="#FFFFFF" color="#06090F" />
+            </View>
+            <Text style={styles.qrSyncId}>{syncId}</Text>
+            <TouchableOpacity style={styles.modalPrimaryButton} onPress={() => setIsQrVisible(false)}>
+              <Text style={styles.modalPrimaryButtonText}>閉じる</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={isScannerVisible} animationType="slide" onRequestClose={() => setIsScannerVisible(false)}>
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={styles.scannerCamera}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            onBarcodeScanned={hasScannedQr ? undefined : handleQrScanned}
+          >
+            <View style={styles.scannerOverlay}>
+              <View style={styles.scannerTopBar}>
+                <Text style={styles.scannerTitle}>同期IDを読み取り</Text>
+                <TouchableOpacity style={styles.scannerCloseButton} onPress={() => setIsScannerVisible(false)}>
+                  <Text style={styles.scannerCloseText}>閉じる</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.scannerFrame} />
+              <Text style={styles.scannerHint}>別端末に表示したKabuHub同期IDのQRを枠内に合わせてください</Text>
+            </View>
+          </CameraView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -697,6 +797,109 @@ function createStyles(c: ColorPalette) {
       paddingHorizontal: Spacing.md,
       fontSize: FontSize.md,
       fontWeight: '700',
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.58)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: Spacing.lg,
+    },
+    qrSheet: {
+      width: '100%',
+      maxWidth: 340,
+      borderRadius: BorderRadius.md,
+      borderWidth: 1,
+      borderColor: c.cardBorder,
+      backgroundColor: c.card,
+      padding: Spacing.lg,
+      alignItems: 'center',
+      gap: Spacing.md,
+    },
+    modalTitle: {
+      color: c.text,
+      fontSize: FontSize.lg,
+      fontWeight: '800',
+    },
+    qrBox: {
+      backgroundColor: '#FFFFFF',
+      padding: Spacing.md,
+      borderRadius: BorderRadius.sm,
+    },
+    qrSyncId: {
+      color: c.textSecondary,
+      fontSize: FontSize.md,
+      fontWeight: '700',
+    },
+    modalPrimaryButton: {
+      width: '100%',
+      minHeight: 44,
+      borderRadius: BorderRadius.sm,
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalPrimaryButtonText: {
+      color: '#06090F',
+      fontSize: FontSize.md,
+      fontWeight: '800',
+    },
+    scannerContainer: {
+      flex: 1,
+      backgroundColor: '#000000',
+    },
+    scannerCamera: {
+      flex: 1,
+    },
+    scannerOverlay: {
+      flex: 1,
+      justifyContent: 'space-between',
+      padding: Spacing.lg,
+      paddingTop: 56,
+      backgroundColor: 'rgba(0,0,0,0.12)',
+    },
+    scannerTopBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Spacing.md,
+    },
+    scannerTitle: {
+      color: '#FFFFFF',
+      fontSize: FontSize.lg,
+      fontWeight: '800',
+    },
+    scannerCloseButton: {
+      minHeight: 36,
+      borderRadius: BorderRadius.sm,
+      backgroundColor: 'rgba(0,0,0,0.46)',
+      paddingHorizontal: Spacing.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scannerCloseText: {
+      color: '#FFFFFF',
+      fontSize: FontSize.sm,
+      fontWeight: '700',
+    },
+    scannerFrame: {
+      alignSelf: 'center',
+      width: 240,
+      height: 240,
+      borderRadius: BorderRadius.sm,
+      borderWidth: 3,
+      borderColor: c.primary,
+      backgroundColor: 'transparent',
+    },
+    scannerHint: {
+      color: '#FFFFFF',
+      fontSize: FontSize.sm,
+      fontWeight: '600',
+      lineHeight: 20,
+      textAlign: 'center',
+      paddingHorizontal: Spacing.md,
+      textShadowColor: 'rgba(0,0,0,0.6)',
+      textShadowRadius: 6,
     },
     checkText: {
       fontSize: 18,

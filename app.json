@@ -21,7 +21,8 @@
         "policy": "appVersion"
       },
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "同期IDのQRコードを読み取るためにカメラを使用します。"
       }
     },
     "android": {
@@ -39,7 +40,13 @@
     "plugins": [
       "expo-router",
       "expo-share-intent",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "同期IDのQRコードを読み取るためにカメラを使用します。"
+        }
+      ]
     ],
     "extra": {
       "router": {
