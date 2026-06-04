@@ -16,6 +16,7 @@ export const db = (() => {
   try {
     return initializeFirestore(app, {
       experimentalForceLongPolling: true,
+      ignoreUndefinedProperties: true,
     });
   } catch {
     return getFirestore(app);

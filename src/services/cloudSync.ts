@@ -27,6 +27,10 @@ function syncDoc(syncId: string) {
   return doc(db, COLLECTION, syncId);
 }
 
+function cleanForFirestore<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function formatError(error: unknown): string {
   if (error instanceof Error) {
     const code = 'code' in error && typeof error.code === 'string' ? error.code : error.name;
@@ -46,7 +50,7 @@ export const CloudSyncService = {
 
     const data = await StorageService.exportUserData();
     await setDoc(syncDoc(syncId), {
-      ...data,
+      ...cleanForFirestore(data),
       syncId,
       updatedAt: serverTimestamp(),
     });
